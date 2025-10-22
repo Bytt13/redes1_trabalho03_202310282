@@ -64,42 +64,50 @@ public class CamadaFisicaTransmissora {
         break;
     } // Fim do switch
 
-    /* *********************************************************
-      ATENCAO, ESSA PARTE EH SOMENTE PARA MOSTRAR NA GUI, NAO TEM VALOR FUNCIONAL
-      AGORA PRECISA SER EXECUTADA NA THREAD DA GUI (JavaFX)
-    ********************************************************* */
-    StringBuilder sb = new StringBuilder();
-    for(int i = 0; i < fluxoBrutoDeBits.length; i++) {
-      sb.append(auxiliar.binaryString(fluxoBrutoDeBits[i]));
-      if (i < fluxoBrutoDeBits.length - 1) {
-        sb.append(" ");
+/* *********************************************************
+  ATENCAO, ESSA PARTE EH SOMENTE PARA MOSTRAR NA GUI, NAO TEM VALOR FUNCIONAL
+  AGORA PRECISA SER EXECUTADA NA THREAD DA GUI (JavaFX)
+********************************************************* */
+
+  int totalDeBitsReais; // Variavel para guardar o nro exato de bits
+  String enquadramento = controller.getEnquadramento();
+
+  // Calcula o total de bits reais baseado no enquadramento e codificacao
+  if (enquadramento.equals("Contagem de Caracteres")) {
+      // Contagem de Caracteres (payload de 4 bytes) -> 1 byte (contagem) + 4 bytes (payload) = 40 bits
+      totalDeBitsReais = 40;
+      // Manchester/Diff (tipos 1 e 2) dobram os bits
+      if (tipoDeCodificacao != 0) {
+          totalDeBitsReais *= 2;
       }
-    }
-    
-    // Calcula o numero de bits exatos apos o enquadramento
-    // Precisamos do total de bits do *payload* original (1 int = 32 bits)
-    int totalDeBitsParaAnimar = 32; // 1 int
-    // Se a codificacao dobra o numero de bits (Manchester por exemplo), a animacao tambem deve dobrar.
-    if (tipoDeCodificacao != 0 && !controller.getEnquadramento().equals("Violacao da Camada Fisica")) {
-        totalDeBitsParaAnimar *= 2;
-    } else if (controller.getEnquadramento().equals("Violacao da Camada Fisica")) {
-        // A violacao ja calcula os bits exatos no fluxoBrutoDeBits
-        totalDeBitsParaAnimar = auxiliar.descobrirTotalDeBitsReais(fluxoBrutoDeBits);
-    }
+  } else {
+      // Para os outros metodos (Insercao de Bits, Bytes, Violacao),
+      // podemos confiar no ultimo bit '1' setado (pelas flags ou stuffing)
+      // para descobrir o tamanho total.
+      totalDeBitsReais = auxiliar.descobrirTotalDeBitsReais(fluxoBrutoDeBits);
+  }
 
-    // Variaveis finais para usar dentro do runLater
-    final String textoCodificado = sb.toString();
-    final int[] bitsAnimacao = fluxoBrutoDeBits;
-    final int bitsParaAnimar = totalDeBitsParaAnimar;
-    
-    // Atualiza a GUI na thread do JavaFX
-    javafx.application.Platform.runLater(() -> {
-        // Mostra os bits codificados (vai piscar a cada subquadro)
-        controller.setTextAreaCodificada(textoCodificado);
-        // Inicia a animacao deste subquadro
-        auxiliar.animate(controller, bitsAnimacao, bitsParaAnimar);
-    });
+  // Agora usamos a funcao auxiliar correta para criar a string
+  // auxiliar.arrayDeBitsParaString(array_de_ints, total_de_bits_para_mostrar)
+  // Isso ira formatar *apenas* os bits relevantes, sem o lixo de zeros no final.
+  final String textoCodificado = auxiliar.arrayDeBitsParaString(fluxoBrutoDeBits, totalDeBitsReais);
+  final int[] bitsAnimacao = fluxoBrutoDeBits;
+  final int bitsParaAnimar = totalDeBitsReais; // A animacao deve usar o mesmo numero de bits
 
+// Atualiza a GUI na thread do JavaFX
+javafx.application.Platform.runLater(() -> {
+    // Pega o texto atual e anexa o novo, para nao sobrescrever (Correcao da concorrencia)
+    String textoAtual = controller.getTextFieldCodificada();
+    StringBuilder sbGUI = new StringBuilder(textoAtual);
+    if (!textoAtual.isEmpty()) {
+        sbGUI.append("\n"); // Adiciona uma nova linha para separar os quadros
+    }
+    sbGUI.append(textoCodificado);
+    controller.setTextAreaCodificada(sbGUI.toString()); // Envia o texto acumulado
+
+    // Inicia a animacao deste subquadro
+    auxiliar.animate(controller, bitsAnimacao, bitsParaAnimar);
+});
     // Envia o subquadro codificado para o Meio
     meio.transferir(fluxoBrutoDeBits);
   } // Fim do metodo enviarSubquadro

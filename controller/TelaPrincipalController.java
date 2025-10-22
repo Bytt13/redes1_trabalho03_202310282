@@ -357,4 +357,15 @@ public class TelaPrincipalController {
   {
     return textAreaMensagemFinal.getText(); // retorno da funcao
   } // Fim do metodo
+
+  /****************************************************************
+  * Metodo: getTextAreaDecodificada
+  * Funcao: retorna o texto contido no campo de texto da mensagem decodificada
+  * @param void
+  * @return String | texto que esta na caixa de texto da mensagem decodificada
+  * ********************************************************* */
+  public String getTextAreaDecodificada()
+  {
+    return textAreaDecodificada.getText(); // retorno da funcao
+  } // Fim do metodo
 } // fim da classe

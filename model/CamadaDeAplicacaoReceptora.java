@@ -31,9 +31,18 @@ public class CamadaDeAplicacaoReceptora {
       final String bitsDecodificados = auxiliar.arrayDeBitsParaString(quadro, totalBits);
       
       // Atualiza a GUI na thread do JavaFX
-      javafx.application.Platform.runLater(() -> {
-        controller.setTextAreaDecodificada(bitsDecodificados);
-      });
+    javafx.application.Platform.runLater(() -> {
+    // --- INICIO DA CORRECAO ---
+    // Pega o texto atual e anexa o novo, usando o getter que criamos
+    String textoAtual = controller.getTextAreaDecodificada();
+    StringBuilder sb = new StringBuilder(textoAtual);
+    if (!textoAtual.isEmpty()) {
+        sb.append("\n"); // Adiciona uma nova linha para separar os quadros
+    }
+    sb.append(bitsDecodificados);
+    controller.setTextAreaDecodificada(sb.toString()); // Envia o texto acumulado
+    // --- FIM DA CORRECAO ---
+});
 
       // Transformando os binarios em texto
       // Agora usamos quadro.length * 4 (bytes) como maximo
