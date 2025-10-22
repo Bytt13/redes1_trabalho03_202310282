@@ -1,10 +1,9 @@
-/***************************************************************** 
-* Autor............: Lucas de Menezes Chaves
+/***************************************************************** * Autor............: Lucas de Menezes Chaves
 * Matricula........: 202310282
 * Inicio...........: 19/08/2025
-* Ultima alteracao.: 29/08/2025
+* Ultima alteracao.: 21/10/2025 (Refatoracao Concorrente)
 * Nome.............: CamadaFisicaTransmissora
-* Funcao...........: Codifica os bits da mensagem recebida
+* Funcao...........: Codifica e envia UM subquadro. Recebe ACKs.
 *************************************************************** */
 
 package model;
@@ -13,21 +12,42 @@ import controller.TelaPrincipalController;
 import utils.FuncoesAuxiliares;
 
 public class CamadaFisicaTransmissora {
-/**************************************************************
-* Metodo: CamadaFisicaTransmissora
-* Funcao: envia a mensagem (em bits) codificada para a proxima camada
-* @param quadro | mensagem recebida (em bits)
-* @return void 
-* ********************************************************* */
-  public CamadaFisicaTransmissora(int[] quadro) {
+  
+  // Referencia ao "onibus" de comunicacao
+  private MeioDeComunicacao meio;
+
+  /**************************************************************
+  * Metodo: setMeio
+  * Funcao: Injeta a dependencia do meio de comunicacao
+  * @param m | O meio
+  * @return void 
+  * ********************************************************* */
+  public void setMeio(MeioDeComunicacao m) {
+    this.meio = m;
+  }
+
+  /**************************************************************
+  * Metodo: CamadaFisicaTransmissora (Construtor Refatorado)
+  * Funcao: Construtor vazio.
+  * ********************************************************* */
+  public CamadaFisicaTransmissora() {
+    // Vazio. A logica foi movida para 'enviarSubquadro'
+  }
+
+  /**************************************************************
+  * Metodo: enviarSubquadro (NOVO)
+  * Funcao: Pega um subquadro enquadrado, o codifica e o envia
+  * para o meio de comunicacao.
+  * @param quadro | subquadro enquadrado
+  * @return void 
+  * ********************************************************* */
+  public void enviarSubquadro(int[] quadro) {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
     TelaPrincipalController controller = TelaPrincipalController.getController();
     int tipoDeCodificacao = auxiliar.numberCodification(controller.getCodificacao()); // codificacao escolhida
     
     int[] fluxoBrutoDeBits; // Fluxo de bits depois de serem codificados
-    for(int i  = 0; i < quadro.length; i++) {
-      controller.setTextAreaCodificada(auxiliar.binaryString(quadro[i]));
-    }
+    
     // switch para codificar corretamente os bits
     switch (tipoDeCodificacao) {
       case 0:
@@ -44,9 +64,9 @@ public class CamadaFisicaTransmissora {
         break;
     } // Fim do switch
 
-    // Calcula o numero de bits exatos apos o enquadramento
     /* *********************************************************
       ATENCAO, ESSA PARTE EH SOMENTE PARA MOSTRAR NA GUI, NAO TEM VALOR FUNCIONAL
+      AGORA PRECISA SER EXECUTADA NA THREAD DA GUI (JavaFX)
     ********************************************************* */
     StringBuilder sb = new StringBuilder();
     for(int i = 0; i < fluxoBrutoDeBits.length; i++) {
@@ -55,19 +75,64 @@ public class CamadaFisicaTransmissora {
         sb.append(" ");
       }
     }
-    controller.setTextAreaCodificada(sb.toString());
-
-    int totalDeBitsParaAnimar = quadro.length * 32;
+    
+    // Calcula o numero de bits exatos apos o enquadramento
+    // Precisamos do total de bits do *payload* original (1 int = 32 bits)
+    int totalDeBitsParaAnimar = 32; // 1 int
     // Se a codificacao dobra o numero de bits (Manchester por exemplo), a animacao tambem deve dobrar.
-    if (tipoDeCodificacao != 0) {
+    if (tipoDeCodificacao != 0 && !controller.getEnquadramento().equals("Violacao da Camada Fisica")) {
         totalDeBitsParaAnimar *= 2;
+    } else if (controller.getEnquadramento().equals("Violacao da Camada Fisica")) {
+        // A violacao ja calcula os bits exatos no fluxoBrutoDeBits
+        totalDeBitsParaAnimar = auxiliar.descobrirTotalDeBitsReais(fluxoBrutoDeBits);
     }
-    auxiliar.animate(controller, fluxoBrutoDeBits, totalDeBitsParaAnimar);
-    new MeioDeComunicacao(fluxoBrutoDeBits);
-  } // Fim do metodo
-  /* *********************************************************
-      ATENCAO, ESSA PARTE EH SOMENTE PARA MOSTRAR NA GUI, NAO TEM VALOR FUNCIONAL
-  ********************************************************* */
+
+    // Variaveis finais para usar dentro do runLater
+    final String textoCodificado = sb.toString();
+    final int[] bitsAnimacao = fluxoBrutoDeBits;
+    final int bitsParaAnimar = totalDeBitsParaAnimar;
+    
+    // Atualiza a GUI na thread do JavaFX
+    javafx.application.Platform.runLater(() -> {
+        // Mostra os bits codificados (vai piscar a cada subquadro)
+        controller.setTextAreaCodificada(textoCodificado);
+        // Inicia a animacao deste subquadro
+        auxiliar.animate(controller, bitsAnimacao, bitsParaAnimar);
+    });
+
+    // Envia o subquadro codificado para o Meio
+    meio.transferir(fluxoBrutoDeBits);
+  } // Fim do metodo enviarSubquadro
+  
+  /**************************************************************
+  * Metodo: receberAck (NOVO - Requisito 6)
+  * Funcao: Metodo de callback chamado pelo Meio quando um ACK
+  * chega para este transmissor.
+  * @param quadroAck | o quadro de ACK (8 bits)
+  * @return void 
+  * ********************************************************* */
+  public void receberAck(int[] quadroAck) {
+    FuncoesAuxiliares aux = new FuncoesAuxiliares();
+    int ackBits = aux.lerBits(quadroAck, 0, 8); // Le os 8 bits do ACK
+
+    if (ackBits == 0b10101010) {
+        System.out.println("ACK Recebido pela Thread: ");
+        System.out.println(Thread.currentThread().getName());
+        // Aqui entraria a logica de retransmissao, se houvesse.
+        // Por enquanto, apenas confirmamos o recebimento.
+    } else {
+        System.out.println("Quadro de resposta desconhecido recebido.");
+    }
+  } // Fim do metodo receberAck
+
+  /*
+   * =================================================================
+   * OS METODOS ABAIXO (Codificacoes)
+   * PERMANECEM OS MESMOS (sao chamados por 'enviarSubquadro')
+   * =================================================================
+   */
+   
+  // ... (Metodos CamadaFisicaTransmissoraCodificacao... permanecem inalterados) ...
   
   /**************************************************************
   * Metodo: CamadaFisicaTransmissoraCodificacaoBinaria
@@ -82,16 +147,28 @@ public class CamadaFisicaTransmissora {
   /**************************************************************
   * Metodo: CamadaFisicaTransmissoraCodificacaoManchester
   * Funcao: envia a mensagem (em bits) codificada em manchester para a proxima camada
-  * @param quadro | mensagem recebida (em bits)
+  * @param quadro | mensagem recebida (em bits) (SUBQUADRO)
   * @return a mensagem codificada em manchester
   * ********************************************************* */
   private int[] CamadaFisicaTransmissoraCodificacaoManchester(int[] quadro) {
     TelaPrincipalController controller = TelaPrincipalController.getController();
+    FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
+
     // if para verificar se precisamos usar a violacao de camada fisica
     if(controller.getEnquadramento().equals("Violacao da Camada Fisica")) {
       return CamadaFisicaTransmissoraEnquadramentoViolacaoFisica(quadro);
     } // fim do if
-    int bitsOriginais = quadro.length * 32; // cria um int com a quantidade de bits originais
+    
+    // Descobre o nro de bits REAIS no subquadro (pode ser < 32)
+    int bitsOriginais;
+    if (controller.getEnquadramento().equals("Contagem de Caracteres")) {
+        // Contagem de Caracteres (neste projeto) SEMPRE cria um quadro de 5 bytes (40 bits)
+        // (1 byte de contagem + 4 bytes de payload)
+        bitsOriginais = 40; 
+    } else {
+        // A logica antiga (pode ter bugs para outros metodos, mas corrige o atual)
+        bitsOriginais = auxiliar.descobrirTotalDeBitsReais(quadro); 
+    }
     
     // O array Manchester tera o dobro de bits, calculamos quantos 'ints' sao necessarios
     int numeroDeBitsManchester = bitsOriginais * 2;
@@ -101,9 +178,7 @@ public class CamadaFisicaTransmissora {
     //for para percorrer os bits e realizar a codificacao manchester
     for (int i = 0; i < bitsOriginais; i++) {
         // Pega o bit original da posicao i
-        int indiceDoIntOriginal = i / 32; // calcula o indice do int original
-        int indiceDoBitNoIntOriginal = 31 - (i % 32); // Do bit mais significativo para o menos
-        int bitOriginal = (quadro[indiceDoIntOriginal] >> indiceDoBitNoIntOriginal) & 1; // pega o bit original e calcula o deslocamento
+        int bitOriginal = auxiliar.lerBits(quadro, i, 1);
 
         // Calcula o par Manchester 
         int bit1 = bitOriginal;
@@ -114,20 +189,10 @@ public class CamadaFisicaTransmissora {
         int indiceBit2 = (i * 2) + 1;
 
         // Escreve o primeiro bit do par
-        int indiceInt1 = indiceBit1 / 32;
-        int indiceBitInt1 = 31 - (indiceBit1 % 32);
-        //if para verificar o valor do bit
-        if (bit1 == 1) {
-            manchester[indiceInt1] |= (1 << indiceBitInt1);
-        } // fim do if
-
+        auxiliar.escreverBits(manchester, indiceBit1, bit1, 1);
+        
         // Escreve o segundo bit do par
-        int indiceInt2 = indiceBit2 / 32;
-        int indiceBitInt2 = 31 - (indiceBit2 % 32);
-        // if para verificar o valor do segundo bit
-        if (bit2 == 1) {
-            manchester[indiceInt2] |= (1 << indiceBitInt2);
-        } // fim do bit
+        auxiliar.escreverBits(manchester, indiceBit2, bit2, 1);
     }
     return manchester; // retorno da funcao
   } // Fim do metodo
@@ -135,16 +200,23 @@ public class CamadaFisicaTransmissora {
   /**************************************************************
   * Metodo: CamadaFisicaTransmissoraCodificacaoManchesterDiferencial
   * Funcao: envia a mensagem (em bits) codificada em manchester diferencial para a proxima camada
-  * @param  quadro | mensagem recebida (em bits)
+  * @param  quadro | mensagem recebida (em bits) (SUBQUADRO)
   * @return a mensagem codificada em manchester diferencial 
   * ********************************************************* */
   private int[] CamadaFisicaTransmissoraCodificacaoManchesterDiferencial(int[] quadro) {
     TelaPrincipalController controller = TelaPrincipalController.getController();
+    FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
     // if para verificar se precisamos usar a violacao de camada fisica
     if(controller.getEnquadramento().equals("Violacao da Camada Fisica")) {
       return CamadaFisicaTransmissoraEnquadramentoViolacaoFisica(quadro);
     } // fim do if
-    int bitsOriginais = quadro.length * 32; // cria um int com a quantidade de bits originais
+    int bitsOriginais;
+    if (controller.getEnquadramento().equals("Contagem de Caracteres")) {
+        // Contagem de Caracteres (neste projeto) SEMPRE cria um quadro de 5 bytes (40 bits)
+        bitsOriginais = 40; 
+    } else {
+        bitsOriginais = auxiliar.descobrirTotalDeBitsReais(quadro);
+    }
 
     // O array codificado tera o dobro de bits.
     int numeroDeBitsManchester = bitsOriginais * 2;
@@ -157,9 +229,7 @@ public class CamadaFisicaTransmissora {
     //for para percorrer os bits e realizar a codificacao de manchester diferencial
     for (int i = 0; i < bitsOriginais; i++) {
         // Pega o bit original da posicao 'i'
-        int indiceDoIntOriginal = i / 32;
-        int indiceDoBitNoIntOriginal = 31 - (i % 32);
-        int bitOriginal = (quadro[indiceDoIntOriginal] >> indiceDoBitNoIntOriginal) & 1;
+        int bitOriginal = auxiliar.lerBits(quadro, i, 1);
 
         // Logica do Manchester Diferencial
         // Se o bit for '0', ha uma transicao no inicio do bit.
@@ -178,20 +248,10 @@ public class CamadaFisicaTransmissora {
         int indiceBit2 = (i * 2) + 1;
 
         // Escreve o primeiro bit do par
-        int indiceInt1 = indiceBit1 / 32;
-        int indiceBitInt1 = 31 - (indiceBit1 % 32);
-        //if para verificar o valor do primeiro bit
-        if (bit1 == 1) {
-            diferencial[indiceInt1] |= (1 << indiceBitInt1);
-        } // fim do if
-
+        auxiliar.escreverBits(diferencial, indiceBit1, bit1, 1);
+        
         // Escreve o segundo bit do par
-        int indiceInt2 = indiceBit2 / 32;
-        int indiceBitInt2 = 31 - (indiceBit2 % 32);
-        //if para verificar o valor do segundo bit
-        if (bit2 == 1) {
-            diferencial[indiceInt2] |= (1 << indiceBitInt2);
-        } // fim do if
+        auxiliar.escreverBits(diferencial, indiceBit2, bit2, 1);
         
         // Atualiza o ultimoNivel para o proximo bit
         ultimoNivel = bit2;
@@ -201,7 +261,7 @@ public class CamadaFisicaTransmissora {
   /**************************************************************
   * Metodo: CamadaFisicaTransmissoraEnquadramentoViolacaoFisica
   * Funcao: Adiciona as flags de inicio e fim (1100) para o enquadramento de violacao da camada fisica.
-  * @param quadro | quadro de bits original
+  * @param quadro | quadro de bits original (SUBQUADRO)
   * @return int[] | novo quadro com as flags
   * ********************************************************* */
   private int[] CamadaFisicaTransmissoraEnquadramentoViolacaoFisica(int[] quadro) {
@@ -212,15 +272,15 @@ public class CamadaFisicaTransmissora {
     final int VIOLACAO = 0b1100;
     final int TAMANHO_VIOLACAO_BITS = 4;
 
-    final int TAMANHO_SUBQUADRO_EM_BITS = 32; // a cada 32 bits adiciona uma flag
+    // A logica original usava 32 bits, o que eh perfeito para nosso subquadro
+    final int TAMANHO_SUBQUADRO_EM_BITS = 32; 
 
     int totalBitsMensagem = auxiliar.descobrirTotalDeBitsReais(quadro);
     if (totalBitsMensagem == 0)
       return new int[0]; // se a mensagem ta vazia nem finaliza o processamento
 
-    // calcula um tamanho MAXIMO estimado para o buffer temporario, nao exato pois
-    // sera aparado depois
-    int numSubquadrosEstimado = (totalBitsMensagem + TAMANHO_SUBQUADRO_EM_BITS - 1) / TAMANHO_SUBQUADRO_EM_BITS;
+    // calcula um tamanho MAXIMO estimado para o buffer temporario
+    int numSubquadrosEstimado = 1; // So temos 1 subquadro
     int totalBitsSinalEstimado = (TAMANHO_VIOLACAO_BITS * (numSubquadrosEstimado + 1)) + (totalBitsMensagem * 2);
     int[] bufferTemporario = new int[(totalBitsSinalEstimado + 31) / 32];
     int bitEscritaGlobal = 0;
@@ -259,7 +319,7 @@ public class CamadaFisicaTransmissora {
       boolean ehFimDoSubquadro = (contadorBitsSubquadro == TAMANHO_SUBQUADRO_EM_BITS);
       boolean ehFimDaMensagem = (i == totalBitsMensagem - 1);
 
-      // if para verificar o fim
+      // if para verificar o fim (AGORA SERAO SEMPRE JUNTOS)
       if (ehFimDoSubquadro || ehFimDaMensagem) {
         // Escreve a violacao de FIM de subquadro (que tambem serve como FIM da
         // mensagem)

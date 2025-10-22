@@ -345,4 +345,16 @@ public class TelaPrincipalController {
       return 0.0; // Retorna 0 em caso de erro na conversao
     }
   } // fim do metodo
+
+  /****************************************************************
+  * Metodo: getTextAreaMensagemFinal
+  * Funcao: retorna o texto contido no campo de texto da mensagem final
+  * (Necessario para acumulacao concorrente)
+  * @param void
+  * @return String | texto que esta na caixa de texto da mensagem final
+  * ********************************************************* */
+  public String getTextAreaMensagemFinal()
+  {
+    return textAreaMensagemFinal.getText(); // retorno da funcao
+  } // Fim do metodo
 } // fim da classe

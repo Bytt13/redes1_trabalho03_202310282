@@ -27,7 +27,7 @@ public class FuncoesAuxiliares {
     return builder.toString(); // retorno da funcao
   } // Fim do metodo
   
-  /**************************************************************
+/**************************************************************
   * Metodo: binaryArrayToString
   * Funcao: transforma o array de bits em uma string para ser apresentada na caixa de texto
   * @param array | bits
@@ -40,6 +40,12 @@ public class FuncoesAuxiliares {
     for (int i = 0; i < comprimentoOriginal; i++) {
       // Usa a funcao que ja tinhamos para pegar um caractere especifico
       char caractere = getCharFromString(frotaDeBits, i);
+      
+      // MODIFICACAO: Para de processar se encontrar um byte nulo (padding)
+      if (caractere == '\0') {
+        break;
+      }
+      
       // Adiciona o caractere recuperado a nossa nova string
       palavraDesmontada.append(caractere);
     }

@@ -1,8 +1,7 @@
-/***************************************************************** 
-* Autor..............: Lucas de Menezes Chaves
+/***************************************************************** * Autor..............: Lucas de Menezes Chaves
 * Matricula........: 202310282
 * Inicio...........: 16/09/2025
-* Ultima alteracao.: 27/09/2025
+* Ultima alteracao.: 21/10/2025 (Refatoracao Concorrente)
 * Nome.............: CamadaEnlaceDadosReceptora
 * Funcao...........: Transfere a mensagem decodificada e desenquadrada para camada aplicacao receptora
 *************************************************************** */
@@ -18,6 +17,7 @@ public class CamadaEnlaceDadosReceptora {
   * @param quadro | bits recebidos
   * @return void 
   * ********************************************************* */
+  // Este é o construtor que voce esta usando (da refatoracao de pipeline)
   public CamadaEnlaceDadosReceptora(int[] quadro) {
     int[] quadroDesenquadrado = CamadaDeEnlaceReceptoraEnquadramento(quadro);
     int[] quadroControlado = CamadaDeEnlaceReceptoraControleDeErro(quadroDesenquadrado);
@@ -105,17 +105,22 @@ public class CamadaEnlaceDadosReceptora {
   * @return quadroDesenquadrado
   * ********************************************************* */
   private static int[] CamadaDeEnlaceReceptoraEnquadramentoContagemDeCaracteres(int[] quadro) {
-FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
-    TelaPrincipalController controller = TelaPrincipalController.getController();
-    String mensagemOriginal = controller.getMensagemOriginal();
-
-    // Calcula o tamanho exato que o array final precisa ter
-    int tamanhoFinalArray = (mensagemOriginal.length() + 3) / 4;
+    FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
+    
+    // Assumimos que o payload desenquadrado sera 1 int (4 bytes)
+    int tamanhoFinalArray = 1;
     int[] quadroDesenquadrado = new int[tamanhoFinalArray];
     int indiceDesenquadrado = 0; // Ponteiro para a proxima posicao livre no array final
 
     int bitLeituraGlobal = 0; // Ponteiro para o bit que esta sendo lido
+    
+    // ----- INICIO DA CORRECAO -----
+    // Nao usamos mais 'descobrirTotalDeBitsReais'. Um quadro enquadrado
+    // pode (e deve) terminar com bits '0' de padding.
+    // Usamos o tamanho fisico total do array.
     int tamanhoMaximoDeBitsNoQuadro = quadro.length * 32;
+    // ----- FIM DA CORRECAO -----
+
 
     // Loop de leitura que continua ate o cursor chegar ao final do quadro
     while (bitLeituraGlobal < tamanhoMaximoDeBitsNoQuadro && indiceDesenquadrado < tamanhoFinalArray) {
@@ -135,10 +140,13 @@ FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
       // calcula quantos bits a carga util tem
       // (tamanho total do frame - 1 byte do cabecalho) * 8 bits
       int bitsDaCargaUtil = (contagem - 1) * 8;
+      
+      if (bitsDaCargaUtil <= 0) break; // Evita erro se a contagem for 1
 
       // verificacao se a carga util cabe no restante do buffer
       if (bitLeituraGlobal + bitsDaCargaUtil > tamanhoMaximoDeBitsNoQuadro) {
-        System.out.println("Erro: Carga util maior que o restante do quadro.");
+        // A mensagem de erro agora eh mais informativa
+        System.out.println("Erro: Carga util maior que o restante do quadro");
         break;
       }
 
@@ -243,17 +251,18 @@ FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
   * ********************************************************* */
   private static int[] CamadaDeEnlaceReceptoraEnquadramentoInsercaoDeBits(int[] quadro) {
       FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
-      TelaPrincipalController controller = TelaPrincipalController.getController();
 
-      // O tamanho final deve ser exatamente o da mensagem original
-      int tamanhoFinalBits = controller.getMensagemOriginal().length() * 8;
-      int tamanhoFinalInts = (tamanhoFinalBits + 31) / 32;
+      // O tamanho final deve ser o do payload (1 int = 32 bits)
+      int tamanhoFinalBits = 32; 
+      int tamanhoFinalInts = 1; 
       int[] quadroDesenquadrado = new int[tamanhoFinalInts];
       
       int ponteiroLeitura = 8; // Pula a FLAG inicial
       int ponteiroEscrita = 0;
       int contadorDeUns = 0;
-      int tamanhoTotalBitsRecebidos = quadro.length * 32;
+      // Aqui usamos descobrirTotalDeBitsReais pois o stuffing de bits
+      // garante que o final sempre sera 01111110 (termina com 1)
+      int tamanhoTotalBitsRecebidos = auxiliar.descobrirTotalDeBitsReais(quadro); 
       final int FLAG = 0b01111110;
 
       while(ponteiroLeitura < tamanhoTotalBitsRecebidos && ponteiroEscrita < tamanhoFinalBits) {
@@ -262,8 +271,10 @@ FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
               int possivelFlag = auxiliar.lerBits(quadro, ponteiroLeitura, 8);
               if (possivelFlag == FLAG) {
                   ponteiroLeitura += 8; // Pula a flag
-                  contadorDeUns = 0;    // Reseta o contador para o proximo sub-quadro
-                  continue;             // Volta ao inicio do loop
+                  contadorDeUns = 0;    // Reseta o contador
+                  // Se encontramos a flag final, paramos
+                  if (ponteiroEscrita > 0) break; 
+                  continue;             // Volta ao inicio do loop (se for a flag inicial)
               }
           }
           

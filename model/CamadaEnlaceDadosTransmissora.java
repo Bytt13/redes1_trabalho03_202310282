@@ -19,12 +19,47 @@ public class CamadaEnlaceDadosTransmissora {
   * @return void 
   * ********************************************************* */
   public CamadaEnlaceDadosTransmissora(int []quadro) {
-    int[] quadroEnquadrado = CamadaDeEnlaceTransmissoraEnquadramento(quadro);
-    int[] quadroControlado = CamadaDeEnlaceTransmissoraControleDeErro(quadroEnquadrado);
-    CamadaDeEnlaceTransmissoraControleDeFluxo(quadroControlado);
+  // O 'quadro' aqui eh a mensagem inteira (array de ints)
+    // Vamos iterar sobre cada 'int' e trata-lo como um subquadro de dados.
+    
+    for (int i = 0; i < quadro.length; i++) {
+        if (quadro[i] == 0) continue; // Pular bytes de padding no final
 
-    new CamadaFisicaTransmissora(quadroEnquadrado);
-  } //Fim do metodo
+        // O payload do nosso subquadro eh 1 int (4 bytes)
+        final int[] subquadroPayload = new int[] { quadro[i] };
+
+        StringBuilder threadName = new StringBuilder("Thread-Subquadro-");
+        threadName.append(i);
+
+        // Requisito 2 e 3: Dispara uma nova Thread dedicada para este subquadro
+        // O transmissor nao espera (pipeline)
+        Thread threadDoSubquadro = new Thread(() -> {
+            // 1. Enquadra e Controla ESTE subquadro
+            int[] subquadroEnquadrado = CamadaDeEnlaceTransmissoraEnquadramento(subquadroPayload);
+            int[] subquadroControlado = CamadaDeEnlaceTransmissoraControleDeErro(subquadroEnquadrado);
+            CamadaDeEnlaceTransmissoraControleDeFluxo(subquadroControlado);
+
+            // 2. Cria os objetos de comunicacao para este ciclo
+            // CamadaFisicaTransmissora agora tem metodos para envio e recebimento de ACK
+            CamadaFisicaTransmissora transmissorFisico = new CamadaFisicaTransmissora();
+            
+            // MeioDeComunicacao agora eh um "onibus" que conecta os dois lados
+            MeioDeComunicacao meio = new MeioDeComunicacao();
+
+            // 3. Linka os objetos
+            transmissorFisico.setMeio(meio); // T -> M
+            meio.setTransmissor(transmissorFisico); // M -> T (para ACKs)
+            // (O Meio cria sua propria instancia de CamadaFisicaReceptora)
+
+            // 4. Inicia o envio do subquadro
+            transmissorFisico.enviarSubquadro(subquadroControlado);
+            
+            // A thread morre apos o envio (e eventual recebimento de ACK)
+        }, threadName.toString());
+        
+        threadDoSubquadro.start();
+    } // Fim do for (pipeline)
+  } //Fim do metodo (construtor)
   /**************************************************************
   * Metodo: CamadaDeEnlaceTrasnmissoraEnquadramento
   * Funcao: enquadra os bits e passa eles para camada seguinte

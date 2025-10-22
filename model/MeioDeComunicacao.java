@@ -2,9 +2,10 @@
 * Autor..............: Lucas de Menezes Chaves
 * Matricula........: 202310282
 * Inicio...........: 20/08/2025
-* Ultima alteracao.: 28/09/2025
+* Ultima alteracao.: 21/10/2025 (Refatoracao Concorrente)
 * Nome.............: MeioDeComunicacao
-* Funcao...........: Transfere a mensagem codificada, aplicando chance de erro por quadro de enquadramento.
+* Funcao...........: Simula a transferencia de UM subquadro, aplica
+* erro por subquadro, e gerencia a rota de ACK.
 *************************************************************** */
 package model;
 
@@ -14,13 +15,42 @@ import utils.FuncoesAuxiliares;
 
 public class MeioDeComunicacao {
 
+  // Referencias para os dois lados da comunicacao
+  private CamadaFisicaTransmissora transmissor;
+  private CamadaFisicaReceptora receptor;
+
 /**************************************************************
-* Metodo: MeioDeComunicacao
-* Funcao: transfere a mensagem em forma de bits, aplicando a logica de erros por quadro.
-* @param fluxoBrutoDeBits | fluxo de bits recebido
+* Metodo: MeioDeComunicacao (Construtor Refatorado)
+* Funcao: Cria a instancia do receptor e o linka a este meio.
+* @param void
 * @return void 
 * ********************************************************* */
-  public MeioDeComunicacao(int[] fluxoBrutoDeBits) {
+  public MeioDeComunicacao() {
+    // O Meio agora eh responsavel por criar o lado receptor
+    this.receptor = new CamadaFisicaReceptora();
+    // Linka o receptor DE VOLTA para este meio (para ACKs)
+    this.receptor.setMeio(this);
+  }
+
+  /**************************************************************
+  * Metodo: setTransmissor
+  * Funcao: Linka o lado transmissor (que iniciou a chamada)
+  * a este meio (para rota de ACK).
+  * @param t | O transmissor
+  * @return void 
+  * ********************************************************* */
+  public void setTransmissor(CamadaFisicaTransmissora t) {
+    this.transmissor = t;
+  }
+
+  /**************************************************************
+  * Metodo: transferir (NOVO - Antigo Construtor)
+  * Funcao: transfere UM subquadro, aplicando a logica de erros
+  * APENAS a este subquadro.
+  * @param fluxoBrutoDeBits | O subquadro codificado
+  * @return void 
+  * ********************************************************* */
+  public void transferir(int[] fluxoBrutoDeBits) {
     TelaPrincipalController controller  = TelaPrincipalController.getController();
     Random random = new Random();
     double taxaDeErro = controller.getTaxaDeErro();
@@ -31,49 +61,20 @@ public class MeioDeComunicacao {
     
     int totalDeBitsReais = auxiliar.descobrirTotalDeBitsReais(fluxoBrutoDeBitsPontoA);
     
-    String enquadramento = controller.getEnquadramento();
+    int posicaoDoErroNesteQuadro = -1; // -1 significa que nao ha erro
 
-    int tamanhoLogicoDoQuadroEmBits;
-    switch (enquadramento) {
-      case "Contagem de Caracteres":
-      case "Insercao de bytes":
-      case "Insercao de bits":
-        tamanhoLogicoDoQuadroEmBits = 40; // 5 bytes
-        break;
-      case "Violacao da Camada Fisica":
-      default:
-        tamanhoLogicoDoQuadroEmBits = totalDeBitsReais;
-        break;
-    }
-
-    int tamanhoFisicoDoQuadroEmBits = tamanhoLogicoDoQuadroEmBits;
-    
-    // Evita divisao por zero se o quadro for vazio
-    if (tamanhoFisicoDoQuadroEmBits <= 0) {
-      new CamadaFisicaReceptora(fluxoBrutoDeBitsPontoB);
-      return;
+    // Requisito 4: Sorteia se O SUBQUADRO ATUAL tera um erro
+    if (random.nextDouble() < taxaDeErro && totalDeBitsReais > 0) {
+        // Sorteia a POSICAO do erro dentro do subquadro
+        posicaoDoErroNesteQuadro = random.nextInt(totalDeBitsReais);
+        System.out.println("ERRO INJETADO no bit:");
+        System.out.println(posicaoDoErroNesteQuadro);
     }
     
-    int posicaoDoErroNesteQuadro = -1; // -1 significa que nao ha erro agendado para o quadro atual
-
-    // Loop principal que simula a transferencia bit a bit 
+    // Loop principal que simula a transferencia bit a bit DO SUBQUADRO
     for (int i = 0; i < totalDeBitsReais; i++) {
-        // Verifica se estamos no inicio de um novo quadro para sortear um erro
-        if (i % tamanhoFisicoDoQuadroEmBits == 0) {
-            posicaoDoErroNesteQuadro = -1; // Reseta o erro do quadro anterior
-            // Sorteia se o quadro ATUAL tera um erro
-            if (random.nextDouble() < taxaDeErro) {
-                // Define o tamanho real deste quadro (pode ser menor no final da transmissao)
-                int fimDoQuadro = Math.min(i + tamanhoFisicoDoQuadroEmBits, totalDeBitsReais);
-                int tamanhoRealDoQuadroAtual = fimDoQuadro - i;
-
-                // Sorteia a POSICAO do erro dentro do quadro e calcula a posicao global
-                int bitAleatorioNoQuadro = random.nextInt(tamanhoRealDoQuadroAtual);
-                posicaoDoErroNesteQuadro = i + bitAleatorioNoQuadro;
-            }
-        }
         
-        // Transfere o bit original de A para B, incondicionalmente.
+        // Transfere o bit original de A para B
         int bitOriginal = auxiliar.lerBits(fluxoBrutoDeBitsPontoA, i, 1);
         auxiliar.escreverBits(fluxoBrutoDeBitsPontoB, i, bitOriginal, 1);
 
@@ -87,6 +88,20 @@ public class MeioDeComunicacao {
 
     } // Fim do for de transferencia bit a bit
     
-    new CamadaFisicaReceptora(fluxoBrutoDeBitsPontoB);
-  } // Fim do metodo
+    // Entrega o subquadro (corrompido ou nao) ao receptor
+    receptor.receberSubquadro(fluxoBrutoDeBitsPontoB);
+  } // Fim do metodo transferir
+
+  /**************************************************************
+  * Metodo: enviarAck (NOVO)
+  * Funcao: Rota de retorno para o ACK. Chamado pelo receptor.
+  * @param ackQuadro | O quadro de ACK
+  * @return void 
+  * ********************************************************* */
+  public void enviarAck(int[] ackQuadro) {
+    // Simula o retorno do ACK (sem erros)
+    if (transmissor != null) {
+      transmissor.receberAck(ackQuadro);
+    }
+  } // Fim do metodo enviarAck
 } // Fim da classe

@@ -6,21 +6,30 @@
 * Nome.............: AplicacaoReceptora
 * Funcao...........: MOstra a mensagem depois de todo o processo de transferencia
 *************************************************************** */
-
 package model;
 
 import controller.TelaPrincipalController;
 
 public class AplicacaoReceptora {
+
 /**************************************************************
 * Metodo: AplicacaoTransmissora
 * Funcao: envia a mensagem em forma de string para a proxima camada
-* @param mensagem | mensagem que o usuario digitou, ja transformada
+* @param mensagem | mensagem que o usuario digitou, ja transformada (AGORA UM SUBQUADRO)
 * @return void 
  * ********************************************************* */
   public AplicacaoReceptora(String mensagem) {
-    TelaPrincipalController controller = TelaPrincipalController.getController(); // pega o controller que vamos usar para mostrar a mensagem
-    controller.setTextAreaMensagemFinal(mensagem); // mostra a mensagem na caixa de texto da GUI
-    // if para comparar as mensagens e emitir o alerta
+    // Como varias threads chamam isso, precisamos atualizar a GUI
+    // de forma segura (na thread do JavaFX) e acumulativa.
+    
+    javafx.application.Platform.runLater(() -> {
+        TelaPrincipalController controller = TelaPrincipalController.getController(); // pega o controller
+        
+        // Acumula o texto
+        String textoAtual = controller.getTextAreaMensagemFinal();
+        StringBuilder sb = new StringBuilder(textoAtual);
+        sb.append(mensagem);
+        controller.setTextAreaMensagemFinal(sb.toString()); // mostra a mensagem na caixa de texto da GUI
+    });
   }// Fim do metodo
 } // Fim da classe
