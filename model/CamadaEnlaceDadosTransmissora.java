@@ -363,19 +363,99 @@ public class CamadaEnlaceDadosTransmissora {
   * Metodo: CamadadeEnlaceTransmissoraControleDeErroBitParidadePar
   * Funcao: adiciona cargas de controle aos bits para ficarem aparentemente livres de erro, ou pelo menos controladas  e passam para proxima camada
   * @param quadro | bits recebidos
-  * @return quadro 
+  * @return quadro controlado
   * ********************************************************* */
   private static int[] CamadadeEnlaceTransmissoraControleDeErroBitParidadePar(int[] quadro) {
-    return quadro;
+    FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
+    TelaPrincipalController controller = TelaPrincipalController.getController();
+    int totalDeBitsReais;
+
+    // Descobre o tamanho real do quadro que veio do enquadramento
+    if (controller.getEnquadramento().equals("Contagem de Caracteres")) {
+        totalDeBitsReais = 40; // 5 bytes * 8 bits
+    } else {
+        totalDeBitsReais = auxiliar.descobrirTotalDeBitsReais(quadro);
+    }
+
+    if (totalDeBitsReais == 0) return quadro; // Nao faz nada se o quadro for vazio
+
+    // 1. Conta o numero de bits '1'
+    int contadorDeUns = 0;
+    for (int i = 0; i < totalDeBitsReais; i++) {
+        if (auxiliar.lerBits(quadro, i, 1) == 1) {
+            contadorDeUns++;
+        }
+    }
+
+    // 2. Calcula o bit de paridade PAR
+    int parityBit = 0;
+    if (contadorDeUns % 2 != 0) { // Se o numero de '1's for IMPAR
+        parityBit = 1; // Adiciona '1' para tornar o total PAR
+    }
+
+    // 3. Cria o novo quadro com espaco para +1 bit
+    int tamanhoNovoInts = (totalDeBitsReais + 1 + 31) / 32;
+    int[] quadroControlado = new int[tamanhoNovoInts];
+
+    // 4. Copia os bits originais
+    for (int i = 0; i < totalDeBitsReais; i++) {
+         int bit = auxiliar.lerBits(quadro, i, 1);
+         auxiliar.escreverBits(quadroControlado, i, bit, 1);
+    }
+    
+    // 5. Adiciona o bit de paridade no final
+    auxiliar.escreverBits(quadroControlado, totalDeBitsReais, parityBit, 1);
+
+    return quadroControlado;
   } //fim do metodo
   /**************************************************************
   * Metodo: CamadadeEnlaceTransmissoraControleDeErroBitParidadeImpar
   * Funcao: adiciona cargas de controle aos bits para ficarem aparentemente livres de erro, ou pelo menos controladas  e passam para proxima camada
   * @param quadro | bits recebidos
-  * @return quadro 
+  * @return quadro controlado
   * ********************************************************* */
   private static int[] CamadadeEnlaceTransmissoraControleDeErroBitParidadeImpar(int[] quadro) {
-    return quadro;
+    FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
+    TelaPrincipalController controller = TelaPrincipalController.getController();
+    int totalDeBitsReais;
+
+    // Descobre o tamanho real do quadro que veio do enquadramento
+    if (controller.getEnquadramento().equals("Contagem de Caracteres")) {
+        totalDeBitsReais = 40; // 5 bytes * 8 bits
+    } else {
+        totalDeBitsReais = auxiliar.descobrirTotalDeBitsReais(quadro);
+    }
+
+    if (totalDeBitsReais == 0) return quadro; // Nao faz nada se o quadro for vazio
+
+    // 1. Conta o numero de bits '1'
+    int contadorDeUns = 0;
+    for (int i = 0; i < totalDeBitsReais; i++) {
+        if (auxiliar.lerBits(quadro, i, 1) == 1) {
+            contadorDeUns++;
+        }
+    }
+
+    // 2. Calcula o bit de paridade IMPAR
+    int parityBit = 0;
+    if (contadorDeUns % 2 == 0) { // Se o numero de '1's for PAR
+        parityBit = 1; // Adiciona '1' para tornar o total IMPAR
+    }
+
+    // 3. Cria o novo quadro com espaco para +1 bit
+    int tamanhoNovoInts = (totalDeBitsReais + 1 + 31) / 32;
+    int[] quadroControlado = new int[tamanhoNovoInts];
+
+    // 4. Copia os bits originais
+    for (int i = 0; i < totalDeBitsReais; i++) {
+         int bit = auxiliar.lerBits(quadro, i, 1);
+         auxiliar.escreverBits(quadroControlado, i, bit, 1);
+    }
+    
+    // 5. Adiciona o bit de paridade no final
+    auxiliar.escreverBits(quadroControlado, totalDeBitsReais, parityBit, 1);
+
+    return quadroControlado;
   } // fim do metodo
   /**************************************************************
   * Metodo: CamadadeEnlaceTransmissoraControleDeErroCRC

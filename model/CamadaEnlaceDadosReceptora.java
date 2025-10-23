@@ -58,6 +58,38 @@ public class CamadaEnlaceDadosReceptora {
     return quadroDesenquadrado;
   } // Fim do metodo
   /**************************************************************
+  * Metodo: processarQuadro (NOVO)
+  * Funcao: Verifica erros, desenquadra e passa para a proxima camada
+  * @param quadro | bits recebidos (decodificados da camada fisica)
+  * @return boolean | true se o quadro esta LIMPO, false se ha ERRO
+  * ********************************************************* */
+  public boolean processarQuadro(int[] quadro) {
+    
+    // 1. FAZ O CONTROLE DE ERRO PRIMEIRO
+    // Este metodo agora retorna o payload (ex: 32 bits) se OK, ou 'null' se ERRO.
+    int[] quadroVerificado = CamadaDeEnlaceReceptoraControleDeErro(quadro);
+    
+    // 2. SE O QUADRO ESTIVER LIMPO (nao nulo)
+    if (quadroVerificado != null) {
+        
+        // 2a. Processa o quadro (Desenquadra e envia para proxima camada)
+        // Agora passa o payload (ex: 32 bits) para o desenquadramento
+        int[] quadroDesenquadrado = CamadaDeEnlaceReceptoraEnquadramento(quadroVerificado);
+        CamadaDeEnlaceReceptoraControleDeFluxo(quadroDesenquadrado); // (Metodo vazio)
+        new CamadaDeAplicacaoReceptora(quadroDesenquadrado);
+        
+        // 2b. Retorna 'true' para a Camada Fisica (para enviar ACK)
+        return true;
+    
+    } else {
+        // 3. SE O QUADRO ESTIVER COM ERRO (nulo)
+        System.out.println("ERRO: Quadro descartado por falha na paridade.");
+        
+        // 3b. Retorna 'false' para a Camada Fisica (NAO enviar ACK)
+        return false;
+    }
+  } // Fim do metodo processarQuadro
+  /**************************************************************
   * Metodo: CamadaDeEnlaceReceptoraControleDeErro
   * Funcao: faz o controle de erros dos bits e passa eles para camada seguinte
   * @param quadro | bits recebidos
@@ -305,7 +337,34 @@ public class CamadaEnlaceDadosReceptora {
   * @return quadro 
   * ********************************************************* */
   private static int[] CamadaDeEnlaceReceptoraEnquadramentoViolacaoCamadaFisica(int[] quadro) {
-    return quadro;
+    FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
+    TelaPrincipalController controller = TelaPrincipalController.getController();
+    int tipoDeControle = auxiliar.controlCodification(controller.getControleErro());
+    
+    int totalBitsRecebidos = auxiliar.descobrirTotalDeBitsReais(quadro);
+    int bitsDeDados = totalBitsRecebidos;
+
+    // Se foi usado Paridade Par ou Impar (0 ou 1), remove 1 bit
+    if (tipoDeControle == 0 || tipoDeControle == 1) {
+        if (bitsDeDados > 0) {
+            bitsDeDados = totalBitsRecebidos - 1; // Ex: 33 - 1 = 32
+        }
+    }
+    // (Se for Hamming ou CRC, a logica de remocao seria mais complexa aqui)
+
+    if (bitsDeDados <= 0) return new int[0];
+    
+    // Calcula o tamanho do array final (para 32 bits, tamanho 1)
+    int tamanhoFinalInts = (bitsDeDados + 31) / 32;
+    int[] quadroDesenquadrado = new int[tamanhoFinalInts];
+
+    // Copia apenas os bits de DADOS (ignora o ultimo bit de paridade)
+    for (int i = 0; i < bitsDeDados; i++) {
+        int bit = auxiliar.lerBits(quadro, i, 1);
+        auxiliar.escreverBits(quadroDesenquadrado, i, bit, 1);
+    }
+    
+    return quadroDesenquadrado;
   } // Fim do metodo
   /**************************************************************
   * Metodo: CamadadeEnlaceReceptoraControleDeErroBitParidadePar
@@ -314,7 +373,36 @@ public class CamadaEnlaceDadosReceptora {
   * @return quadro 
   * ********************************************************* */
   private static int[] CamadadeEnlaceReceptoraControleDeErroBitParidadePar(int[] quadro) {
-    return quadro;
+    FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
+    
+    int totalDeBitsAConferir = auxiliar.descobrirTotalDeBitsReais(quadro);
+    if (totalDeBitsAConferir == 0) return quadro; // Retorna o quadro vazio
+
+    int contadorDeUns = 0;
+    // Loop que conta TODOS os bits (dados + paridade)
+    for (int i = 0; i < totalDeBitsAConferir; i++) {
+        if (auxiliar.lerBits(quadro, i, 1) == 1) {
+            contadorDeUns++;
+        }
+    }
+    
+    // Se a contagem total for IMPAR, o quadro esta com erro.
+    if (contadorDeUns % 2 != 0) {
+        return null; // Erro detectado
+    }
+
+    // Se for PAR (correto), remove o bit de paridade e retorna o payload
+    int bitsDeDados = totalDeBitsAConferir - 1;
+    int tamanhoFinalInts = (bitsDeDados + 31) / 32;
+    int[] quadroSemParidade = new int[tamanhoFinalInts];
+
+    // Copia apenas os bits de DADOS (ignora o ultimo bit)
+    for (int i = 0; i < bitsDeDados; i++) {
+        int bit = auxiliar.lerBits(quadro, i, 1);
+        auxiliar.escreverBits(quadroSemParidade, i, bit, 1);
+    }
+
+    return quadroSemParidade; // Retorna o payload limpo
   } //fim do metodo
   /**************************************************************
   * Metodo: CamadadeEnlaceReceptoraControleDeErroBitParidadeImpar
@@ -323,7 +411,36 @@ public class CamadaEnlaceDadosReceptora {
   * @return quadro 
   * ********************************************************* */
   private static int[] CamadadeEnlaceReceptoraControleDeErroBitParidadeImpar(int[] quadro) {
-    return quadro;
+    FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
+    
+    int totalDeBitsAConferir = auxiliar.descobrirTotalDeBitsReais(quadro);
+    if (totalDeBitsAConferir == 0) return quadro; // Retorna o quadro vazio
+
+    int contadorDeUns = 0;
+    // Loop que conta TODOS os bits (dados + paridade)
+    for (int i = 0; i < totalDeBitsAConferir; i++) {
+        if (auxiliar.lerBits(quadro, i, 1) == 1) {
+            contadorDeUns++;
+        }
+    }
+    
+    // Se a contagem total for PAR, o quadro esta com erro.
+    if (contadorDeUns % 2 == 0) {
+        return null; // Erro detectado
+    }
+
+    // Se for IMPAR (correto), remove o bit de paridade e retorna o payload
+    int bitsDeDados = totalDeBitsAConferir - 1;
+    int tamanhoFinalInts = (bitsDeDados + 31) / 32;
+    int[] quadroSemParidade = new int[tamanhoFinalInts];
+
+    // Copia apenas os bits de DADOS (ignora o ultimo bit)
+    for (int i = 0; i < bitsDeDados; i++) {
+        int bit = auxiliar.lerBits(quadro, i, 1);
+        auxiliar.escreverBits(quadroSemParidade, i, bit, 1);
+    }
+
+    return quadroSemParidade; // Retorna o payload limpo
   } // fim do metodo
   /**************************************************************
   * Metodo: CamadadeEnlaceReceptoraControleDeErroCRC

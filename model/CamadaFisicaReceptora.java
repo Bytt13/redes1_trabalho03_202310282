@@ -2,7 +2,7 @@
 * Autor..............: Lucas de Menezes Chaves
 * Matricula........: 202310282
 * Inicio...........: 21/08/2025
-* Ultima alteracao.: 21/10/2025 (Refatoracao Concorrente)
+* Ultima alteracao.: 23/10/2025 (Correcao de Paridade e Timeout)
 * Nome.............: CamadaFisicaReceptora
 * Funcao...........: Recebe UM subquadro, decodifica, e envia um ACK.
 *************************************************************** */
@@ -67,32 +67,38 @@ public class CamadaFisicaReceptora {
         break;
     } // Fim do switch
 
-    // Chama a proxima camada (Enlace Receptora) com o subquadro decodificado
-    new CamadaEnlaceDadosReceptora(fluxoBrutoDeBits);
-
-    // Requisito 5: Gerar e enviar um ACK apos processar
-    // (independentemente de erro)
-    int[] ackQuadro = new int[1]; // 1 int eh suficiente para 8 bits
-    int ackBits = 0b10101010; // Padrao de ACK fixo
+    // --- INICIO DA CORRECAO (Logica de ACK em Camadas) ---
     
-    // Escreve os 8 bits de ACK no int
-    auxiliar.escreverBits(ackQuadro, 0, ackBits, 8);
-    
-    // Envia o ACK de volta pelo Meio
-    meio.enviarAck(ackQuadro);
+    // 1. Instancia a camada de enlace (com construtor vazio)
+    CamadaEnlaceDadosReceptora enlaceReceptor = new CamadaEnlaceDadosReceptora(fluxoBrutoDeBits);
 
+    // 2. Chama a camada de enlace para processar o quadro.
+    // Este metodo agora retorna 'true' se o quadro estiver limpo, 'false' se houver erro.
+    boolean quadroLimpo = enlaceReceptor.processarQuadro(fluxoBrutoDeBits);
+
+    // 3. Se o quadro estava limpo (verificado pela Camada 2),
+    // esta camada (Camada 1) envia o ACK.
+    if (quadroLimpo) {
+        int[] ackQuadro = new int[1]; // 1 int eh suficiente para 8 bits
+        int ackBits = 0b10101010; // Padrao de ACK fixo
+        
+        // Escreve os 8 bits de ACK no int
+        auxiliar.escreverBits(ackQuadro, 0, ackBits, 8);
+        
+        // Envia o ACK de volta pelo Meio
+        meio.enviarAck(ackQuadro);
+    }
+    // Se 'quadroLimpo' for false, nada eh feito, e o transmissor sofrera timeout.
+    // --- FIM DA CORRECAO ---
+    
   } // Fim do metodo receberSubquadro
 
   /*
    * =================================================================
    * OS METODOS ABAIXO (Decodificacoes)
-   * PERMANECEM OS MESMOS (sao chamados por 'receberSubquadro')
    * =================================================================
    */
    
-  // ... (Metodos CamadaFisicaReceptoraDecodificacao... e DesenquadramentoViolacaoFisica... permanecem inalterados) ...
-  // ... (Pequenas correcoes em Manchester para usar lerBits/escreverBits) ...
-  
   /**************************************************************
   * Metodo: CamadaFisicaTransmissoraCodificacaoBinaria
   * Funcao: envia a mensagem (em bits) decodificada em binario para a proxima camada
@@ -106,8 +112,8 @@ public class CamadaFisicaReceptora {
   /**************************************************************
   * Metodo: CamadaFisicaReceptoraDecodificacaoManchester
   * Funcao: envia a mensagem (em bits) decodificada em manchester para a proxima camada
-  * @param quadro | mensagem recebida (em bits) (SUBQUADRO)
-  * @return a mensagem decodificada em manchester
+  * @param quadro | mensagem recebida (em bits) (SUBQUADRO, ex: 82 bits)
+  * @return a mensagem decodificada em manchester (ex: 41 bits)
   * ********************************************************* */
   private int[] CamadaFisicaReceptoraDecodificacaoManchester(int[] quadro) {
     TelaPrincipalController controller = TelaPrincipalController.getController();
@@ -118,15 +124,12 @@ public class CamadaFisicaReceptora {
       return CamadaFisicaReceptoraDesenquadramentoViolacaoFisica(quadro);
     } // fim do if
     
-    int bitsCodificados;
-    if (controller.getEnquadramento().equals("Contagem de Caracteres")) {
-        bitsCodificados = 80; // 40 bits originais * 2 = 80 bits Manchester
-    } else {
-        // Logica antiga
-        bitsCodificados = auxiliar.descobrirTotalDeBitsReais(quadro);
-        // Garante que o numero de bits seja par para a decodificacao
-        if(bitsCodificados % 2 != 0) bitsCodificados++;
-    }
+    // --- INICIO DA CORRECAO (HARD-CODED 80 bits) ---
+    int bitsCodificados = auxiliar.descobrirTotalDeBitsReais(quadro);
+    // Garante que o numero de bits seja par para a decodificacao
+    if(bitsCodificados % 2 != 0) bitsCodificados++;
+    // --- FIM DA CORRECAO ---
+    
     int bitsOriginais = bitsCodificados / 2; // O resultado tera metade dos bits
     
     int tamanhoArrayDecodificado = (bitsOriginais + 31) / 32;
@@ -150,8 +153,8 @@ public class CamadaFisicaReceptora {
   /**************************************************************
   * Metodo: CamadaFisicaReceptoraDecodificacaoManchesterDiferencial
   * Funcao: envia a mensagem (em bits) deodificada em manchester diferencial para a proxima camada
-  * @param quadro | mensagem recebida (em bits) (SUBQUADRO)
-  * @return a mensagem decodificada em mancheser diferencial
+  * @param quadro | mensagem recebida (em bits) (SUBQUADRO, ex: 82 bits)
+  * @return a mensagem decodificada em mancheser diferencial (ex: 41 bits)
   * ********************************************************* */
   private int[] CamadaFisicaReceptoraDecodificacaoManchesterDiferencial(int[] quadro) {
     TelaPrincipalController controller = TelaPrincipalController.getController();
@@ -161,15 +164,12 @@ public class CamadaFisicaReceptora {
       return CamadaFisicaReceptoraDesenquadramentoViolacaoFisica(quadro);
     } // fim do if
 
-    int bitsCodificados;
-    if (controller.getEnquadramento().equals("Contagem de Caracteres")) {
-        bitsCodificados = 80; // 40 bits originais * 2 = 80 bits Manchester
-    } else {
-        // Logica antiga
-        bitsCodificados = auxiliar.descobrirTotalDeBitsReais(quadro);
-        // Garante que o numero de bits seja par para a decodificacao
-        if(bitsCodificados % 2 != 0) bitsCodificados++;
-    }
+    // --- INICIO DA CORRECAO (HARD-CODED 80 bits) ---
+    int bitsCodificados = auxiliar.descobrirTotalDeBitsReais(quadro);
+    // Garante que o numero de bits seja par para a decodificacao
+    if(bitsCodificados % 2 != 0) bitsCodificados++;
+    // --- FIM DA CORRECAO ---
+    
     int bitsOriginais = bitsCodificados / 2; // O resultado tera metade dos bits
 
     int tamanhoArrayDecodificado = (bitsOriginais + 31) / 32;
@@ -211,7 +211,7 @@ public class CamadaFisicaReceptora {
   * Metodo: CamadaFisicaReceptoraDesenquadramentoViolacaoFisica
   * Funcao: Remove as flags de inicio e fim (1100) do enquadramento de violacao da camada fisica.
   * @param quadro | quadro de bits com as flags (SUBQUADRO)
-  * @return int[] | novo quadro sem as flags
+  * @return int[] | novo quadro sem as flags (ex: 33 bits)
   * ********************************************************* */
   private int[] CamadaFisicaReceptoraDesenquadramentoViolacaoFisica(int[] quadro) {
     TelaPrincipalController controller = TelaPrincipalController.getController();
@@ -232,7 +232,7 @@ public class CamadaFisicaReceptora {
     int nivelAnterior = 1; // para Manchester Diferencial
 
     int i = 0; 
-    // while para melhor controle do indice manualmente
+    // while para melhor controle do indice manually
     while (i <= totalBitsSinal - 2) { // garante que pelo menos um par manchester existe
 
       // if paraverificar se ha uma VIOLACAO (1100) na posicao atual
