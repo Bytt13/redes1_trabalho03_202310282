@@ -292,7 +292,7 @@ public class CamadaFisicaTransmissora {
     final int VIOLACAO = 0b1100;
     final int TAMANHO_VIOLACAO_BITS = 4;
 
-    int totalBitsMensagem = auxiliar.descobrirTotalDeBitsReais(quadro);
+    int totalBitsMensagem = quadro.length * 32;
     if (totalBitsMensagem == 0)
       return new int[0]; // se a mensagem ta vazia nem finaliza o processamento
 
@@ -326,11 +326,19 @@ public class CamadaFisicaTransmissora {
           sinal1 = (bitOriginal == 1) ? 1 : 0;
           sinal2 = (bitOriginal == 1) ? 0 : 1;
         } else { // Manchester Diferencial
-          if (bitOriginal == 0)
-            nivelAtual = 1 - nivelAtual;
+        if (bitOriginal == 0) {
+            nivelAtual = 1 - nivelAtual; // Inverte o nivel
+          }
+          // Se o bit for '1', nao ha transicao (nivelAtual eh mantido)
+
+          // Codificacao Manchester: o primeiro nivel eh o que definimos,
+          // o segundo eh sempre o inverso.
           sinal1 = nivelAtual;
-          nivelAtual = 1 - nivelAtual;
-          sinal2 = nivelAtual;
+          sinal2 = 1 - nivelAtual; // A transicao do meio do bit
+
+          // Atualiza o 'nivelAtual' para o proximo bit.
+          // O proximo bit vai comparar com o *fim* deste bit.
+          nivelAtual = sinal2;
         }
         auxiliar.escreverBits(bufferTemporario, bitEscritaGlobal++, sinal1, 1);
         auxiliar.escreverBits(bufferTemporario, bitEscritaGlobal++, sinal2, 1);

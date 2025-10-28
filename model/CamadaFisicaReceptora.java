@@ -221,7 +221,7 @@ public class CamadaFisicaReceptora {
     final int VIOLACAO = 0b1100;
     final int TAMANHO_VIOLACAO_BITS = 4;
 
-    int totalBitsSinal = auxiliar.descobrirTotalDeBitsReais(quadro);
+    int totalBitsSinal = quadro.length * 32;
     if (totalBitsSinal == 0)
       return new int[0];
 
@@ -247,6 +247,7 @@ public class CamadaFisicaReceptora {
              break; // Encerra o processamento deste subquadro
           }
           i += TAMANHO_VIOLACAO_BITS; // pula os 4 bits da violacao
+          nivelAnterior = 1;
           continue; // volta ao inicio do loop
         } // fim do if
       } // fim do if

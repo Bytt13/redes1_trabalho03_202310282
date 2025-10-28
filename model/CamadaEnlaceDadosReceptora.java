@@ -11,6 +11,8 @@ import controller.TelaPrincipalController;
 import utils.FuncoesAuxiliares;
 
 public class CamadaEnlaceDadosReceptora {
+  private int[] quadroVerificado; // O payload (se limpo) ou null (se erro)
+  private boolean quadroEstaLimpo = false;
   /**************************************************************
   * Metodo: CamadaEnlaceDadosReceptora
   * Funcao: desenquadra os bits e passa eles para camada seguinte
@@ -19,11 +21,20 @@ public class CamadaEnlaceDadosReceptora {
   * ********************************************************* */
   // Este é o construtor que voce esta usando (da refatoracao de pipeline)
   public CamadaEnlaceDadosReceptora(int[] quadro) {
-    int[] quadroDesenquadrado = CamadaDeEnlaceReceptoraEnquadramento(quadro);
+    this.quadroVerificado = CamadaDeEnlaceReceptoraControleDeErro(quadro);
+    
+    // 2. ARMAZENA O RESULTADO
+    if (this.quadroVerificado != null) {
+        this.quadroEstaLimpo = true;
+    } else {
+        this.quadroEstaLimpo = false;
+    }
+
+    /*int[] quadroDesenquadrado = CamadaDeEnlaceReceptoraEnquadramento(quadro);
     int[] quadroControlado = CamadaDeEnlaceReceptoraControleDeErro(quadroDesenquadrado);
     CamadaDeEnlaceReceptoraControleDeFluxo(quadroControlado);
 
-    new CamadaDeAplicacaoReceptora(quadroDesenquadrado);
+    new CamadaDeAplicacaoReceptora(quadroDesenquadrado);*/
   } // Fim do metodo
   /**************************************************************
   * Metodo: CamadaDeEnlaceReceptoraEnquadramento
@@ -65,16 +76,11 @@ public class CamadaEnlaceDadosReceptora {
   * ********************************************************* */
   public boolean processarQuadro(int[] quadro) {
     
-    // 1. FAZ O CONTROLE DE ERRO PRIMEIRO
-    // Este metodo agora retorna o payload (ex: 32 bits) se OK, ou 'null' se ERRO.
-    int[] quadroVerificado = CamadaDeEnlaceReceptoraControleDeErro(quadro);
-    
-    // 2. SE O QUADRO ESTIVER LIMPO (nao nulo)
-    if (quadroVerificado != null) {
+    if (this.quadroEstaLimpo) {
         
         // 2a. Processa o quadro (Desenquadra e envia para proxima camada)
-        // Agora passa o payload (ex: 32 bits) para o desenquadramento
-        int[] quadroDesenquadrado = CamadaDeEnlaceReceptoraEnquadramento(quadroVerificado);
+        // Usa o 'quadroVerificado' (payload) que o construtor salvou
+        int[] quadroDesenquadrado = CamadaDeEnlaceReceptoraEnquadramento(this.quadroVerificado);
         CamadaDeEnlaceReceptoraControleDeFluxo(quadroDesenquadrado); // (Metodo vazio)
         new CamadaDeAplicacaoReceptora(quadroDesenquadrado);
         
@@ -337,34 +343,7 @@ public class CamadaEnlaceDadosReceptora {
   * @return quadro 
   * ********************************************************* */
   private static int[] CamadaDeEnlaceReceptoraEnquadramentoViolacaoCamadaFisica(int[] quadro) {
-    FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
-    TelaPrincipalController controller = TelaPrincipalController.getController();
-    int tipoDeControle = auxiliar.controlCodification(controller.getControleErro());
-    
-    int totalBitsRecebidos = auxiliar.descobrirTotalDeBitsReais(quadro);
-    int bitsDeDados = totalBitsRecebidos;
-
-    // Se foi usado Paridade Par ou Impar (0 ou 1), remove 1 bit
-    if (tipoDeControle == 0 || tipoDeControle == 1) {
-        if (bitsDeDados > 0) {
-            bitsDeDados = totalBitsRecebidos - 1; // Ex: 33 - 1 = 32
-        }
-    }
-    // (Se for Hamming ou CRC, a logica de remocao seria mais complexa aqui)
-
-    if (bitsDeDados <= 0) return new int[0];
-    
-    // Calcula o tamanho do array final (para 32 bits, tamanho 1)
-    int tamanhoFinalInts = (bitsDeDados + 31) / 32;
-    int[] quadroDesenquadrado = new int[tamanhoFinalInts];
-
-    // Copia apenas os bits de DADOS (ignora o ultimo bit de paridade)
-    for (int i = 0; i < bitsDeDados; i++) {
-        int bit = auxiliar.lerBits(quadro, i, 1);
-        auxiliar.escreverBits(quadroDesenquadrado, i, bit, 1);
-    }
-    
-    return quadroDesenquadrado;
+    return quadro;
   } // Fim do metodo
   /**************************************************************
   * Metodo: CamadadeEnlaceReceptoraControleDeErroBitParidadePar
@@ -374,9 +353,34 @@ public class CamadaEnlaceDadosReceptora {
   * ********************************************************* */
   private static int[] CamadadeEnlaceReceptoraControleDeErroBitParidadePar(int[] quadro) {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
+    TelaPrincipalController controller = TelaPrincipalController.getController(); // Precisa do controller
     
-    int totalDeBitsAConferir = auxiliar.descobrirTotalDeBitsReais(quadro);
+    int totalDeBitsAConferir;
+    int bitsDeDados;
+    // Precisamos saber o tamanho *esperado* do quadro, pois descobrirTotalDeBitsReais()
+    // falha se o bit de paridade for 0.
+    if (controller.getEnquadramento().equals("Contagem de Caracteres")) {
+        totalDeBitsAConferir = 41; // 40 bits do quadro + 1 bit de paridade
+        bitsDeDados = 40;
+    } else {
+        // CORRECAO: Os outros metodos de enquadramento enviam 1 subquadro (32 bits) + 1 bit de paridade
+        // Nao podemos usar descobrirTotalDeBitsReais() pois o bit de paridade pode ser 0.
+        bitsDeDados = 32; // O payload original e sempre 32 bits
+        totalDeBitsAConferir = 33; // 32 bits de dados + 1 bit de paridade
+    }
+
     if (totalDeBitsAConferir == 0) return quadro; // Retorna o quadro vazio
+
+    int maxBitsNoArray = quadro.length * 32;
+
+    // Se o numero de bits que *esperamos* conferir (ex: 41)
+    // for maior do que o numero de bits que *realmente existem* no array (ex: 32,
+    // por causa de um erro na decodificacao), entao o quadro esta
+    // irrevogavelmente corrompido. Retorna null.
+    if (totalDeBitsAConferir > maxBitsNoArray) {
+        System.out.println("erro na descoberta de tamannho de bits");
+        return null; // Erro detectado
+    }
 
     int contadorDeUns = 0;
     // Loop que conta TODOS os bits (dados + paridade)
@@ -392,7 +396,6 @@ public class CamadaEnlaceDadosReceptora {
     }
 
     // Se for PAR (correto), remove o bit de paridade e retorna o payload
-    int bitsDeDados = totalDeBitsAConferir - 1;
     int tamanhoFinalInts = (bitsDeDados + 31) / 32;
     int[] quadroSemParidade = new int[tamanhoFinalInts];
 
@@ -412,10 +415,35 @@ public class CamadaEnlaceDadosReceptora {
   * ********************************************************* */
   private static int[] CamadadeEnlaceReceptoraControleDeErroBitParidadeImpar(int[] quadro) {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
+    TelaPrincipalController controller = TelaPrincipalController.getController(); // Precisa do controller
     
-    int totalDeBitsAConferir = auxiliar.descobrirTotalDeBitsReais(quadro);
+    int totalDeBitsAConferir;
+    int bitsDeDados;
+
+    // --- INICIO DA CORRECAO ---
+    if (controller.getEnquadramento().equals("Contagem de Caracteres")) {
+        totalDeBitsAConferir = 41; // 40 bits do quadro + 1 bit de paridade
+        bitsDeDados = 40;
+    } else {
+        // CORRECAO: Os outros metodos de enquadramento enviam 1 subquadro (32 bits) + 1 bit de paridade
+        // Nao podemos usar descobrirTotalDeBitsReais() pois o bit de paridade pode ser 0.
+        bitsDeDados = 32; // O payload original e sempre 32 bits
+        totalDeBitsAConferir = 33; // 32 bits de dados + 1 bit de paridade
+    }
+    // --- FIM DA CORRECAO ---
+
     if (totalDeBitsAConferir == 0) return quadro; // Retorna o quadro vazio
 
+    int maxBitsNoArray = quadro.length * 32;
+
+    // Se o numero de bits que *esperamos* conferir (ex: 41)
+    // for maior do que o numero de bits que *realmente existem* no array (ex: 32,
+    // por causa de um erro na decodificacao), entao o quadro esta
+    // irrevogavelmente corrompido. Retorna null.
+    if (totalDeBitsAConferir > maxBitsNoArray) {
+        System.out.println("Erro de Paridade Impar: Quadro truncado.");
+        return null; // Erro detectado
+    }
     int contadorDeUns = 0;
     // Loop que conta TODOS os bits (dados + paridade)
     for (int i = 0; i < totalDeBitsAConferir; i++) {
@@ -430,7 +458,6 @@ public class CamadaEnlaceDadosReceptora {
     }
 
     // Se for IMPAR (correto), remove o bit de paridade e retorna o payload
-    int bitsDeDados = totalDeBitsAConferir - 1;
     int tamanhoFinalInts = (bitsDeDados + 31) / 32;
     int[] quadroSemParidade = new int[tamanhoFinalInts];
 
