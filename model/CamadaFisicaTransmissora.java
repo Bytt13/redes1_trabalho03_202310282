@@ -214,7 +214,7 @@ public class CamadaFisicaTransmissora {
 
     final int TAMANHO_SUBQUADRO_EM_BITS = 32; // a cada 32 bits adiciona uma flag
 
-    int totalBitsMensagem = auxiliar.descobrirTotalDeBitsReais(quadro);
+    int totalBitsMensagem = quadro.length * 32;
     if (totalBitsMensagem == 0)
       return new int[0]; // se a mensagem ta vazia nem finaliza o processamento
 
@@ -280,7 +280,6 @@ public class CamadaFisicaTransmissora {
       int bit = auxiliar.lerBits(bufferTemporario, i, 1);
       auxiliar.escreverBits(fluxoBrutoDeBitsFinal, i, bit, 1);
     } // fim do for
-
     return fluxoBrutoDeBitsFinal; // retorna o array 
   }// fim do metodo
 } // Fim da classe

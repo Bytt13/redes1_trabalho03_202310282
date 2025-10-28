@@ -29,7 +29,7 @@ public class MeioDeComunicacao {
     int[] fluxoBrutoDeBitsPontoA = fluxoBrutoDeBits;
     int[] fluxoBrutoDeBitsPontoB = new int[fluxoBrutoDeBitsPontoA.length];
     
-    int totalDeBitsReais = auxiliar.descobrirTotalDeBitsReais(fluxoBrutoDeBitsPontoA);
+    int totalDeBitsReais = fluxoBrutoDeBitsPontoA.length * 32;
     
     String enquadramento = controller.getEnquadramento();
 

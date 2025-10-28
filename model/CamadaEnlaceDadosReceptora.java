@@ -9,6 +9,8 @@
 package model;
 
 import controller.TelaPrincipalController;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
 import utils.FuncoesAuxiliares;
 
 public class CamadaEnlaceDadosReceptora {
@@ -19,9 +21,9 @@ public class CamadaEnlaceDadosReceptora {
   * @return void 
   * ********************************************************* */
   public CamadaEnlaceDadosReceptora(int[] quadro) {
-    int[] quadroDesenquadrado = CamadaDeEnlaceReceptoraEnquadramento(quadro);
-    int[] quadroControlado = CamadaDeEnlaceReceptoraControleDeErro(quadroDesenquadrado);
-    CamadaDeEnlaceReceptoraControleDeFluxo(quadroControlado);
+    int[] quadroOrdenado = CamadaDeEnlaceReceptoraControleDeFluxo(quadro);
+    int[] quadroControlado = CamadaDeEnlaceReceptoraControleDeErro(quadroOrdenado);
+    int[] quadroDesenquadrado = CamadaDeEnlaceReceptoraEnquadramento(quadroControlado);
 
     new CamadaDeAplicacaoReceptora(quadroDesenquadrado);
   } // Fim do metodo
@@ -95,8 +97,8 @@ public class CamadaEnlaceDadosReceptora {
   * @param quadro | bits recebidos
   * @return void 
   * ********************************************************* */
-  private static void CamadaDeEnlaceReceptoraControleDeFluxo(int[] quadro) {
-    return;
+  private static int[] CamadaDeEnlaceReceptoraControleDeFluxo(int[] quadro) {
+    return quadro;
   } // Fim do metodo
  /**************************************************************
   * Metodo: CamadaDeEnlaceReceptoraEnquadramentoContagemDeCaracteres
@@ -249,7 +251,6 @@ FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
       int tamanhoFinalBits = controller.getMensagemOriginal().length() * 8;
       int tamanhoFinalInts = (tamanhoFinalBits + 31) / 32;
       int[] quadroDesenquadrado = new int[tamanhoFinalInts];
-      
       int ponteiroLeitura = 8; // Pula a FLAG inicial
       int ponteiroEscrita = 0;
       int contadorDeUns = 0;
@@ -303,7 +304,68 @@ FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
   * @return quadro 
   * ********************************************************* */
   private static int[] CamadadeEnlaceReceptoraControleDeErroBitParidadePar(int[] quadro) {
-    return quadro;
+    FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
+
+    // Descobre o tamanho total de bits, incluindo o bit de paridade
+    int totalBitsRecebidos = quadro.length * 32;
+
+    // Se o quadro estiver vazio, nao ha nada a fazer.
+    if (totalBitsRecebidos == 0) {
+      return quadro;
+    }
+
+    // 2. inicializar contador de um
+    int contadorDeUns = 0;
+
+    // 3. percorrer quadro recebido[]
+    // 4. para cada 1 em quadro recebido[]
+    for (int i = 0; i < totalBitsRecebidos; i++) {
+      if (auxiliar.lerBits(quadro, i, 1) == 1) {
+        contadorDeUns++; // 5. contador de um ++
+      }
+    } // 6. fim do para cada
+
+    System.out.println(contadorDeUns);
+
+    // 7. se contador de um % 2 != 0 (impar, indica erro)
+    if (contadorDeUns % 2 != 0) {
+      // 9. alerta(houve um erro de paridade)
+      Alert alert = new Alert(AlertType.ERROR);
+      alert.setTitle("Erro de Transmissão");
+      alert.setHeaderText("Erro de Paridade Detectado");
+      alert.setContentText("Um erro foi detectado nos dados recebidos! O controle de paridade par falhou (a contagem de bits '1' é ímpar).");
+      
+      // Eh melhor usar show() se a simulacao precisar continuar rodando
+      alert.show(); 
+    }
+    // 8. nao houve erro (Nao faz nada, conforme solicitado)
+    // 10. fim do se
+
+    // Agora, removemos o bit de paridade para passar apenas os dados
+    
+    // 1. inicializar quadro controlado
+    // O quadro de dados real eh 1 bit menor que o quadro recebido
+    int totalBitsDeDados = totalBitsRecebidos - 1;
+
+    // Se o quadro so tinha o bit de paridade (ou estava vazio), retorna vazio
+    if (totalBitsDeDados <= 0) {
+        return new int[0];
+    }
+
+    // Calcula o tamanho do novo array de int[]
+    int tamanhoNovoArray = (totalBitsDeDados + 31) / 32;
+    int[] quadroControlado = new int[tamanhoNovoArray];
+
+    // 11. remover quadrorecebido[ultima posicao]
+    // 12. quadro controlado = quadro recebido
+    // (Isso eh feito copiando todos os bits, *exceto* o ultimo)
+    for (int i = 0; i < totalBitsDeDados; i++) {
+      int bit = auxiliar.lerBits(quadro, i, 1);
+      auxiliar.escreverBits(quadroControlado, i, bit, 1);
+    }
+
+    // 13. retorne quadro controlado
+    return quadroControlado;
   } //fim do metodo
   /**************************************************************
   * Metodo: CamadadeEnlaceReceptoraControleDeErroBitParidadeImpar
@@ -312,7 +374,69 @@ FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
   * @return quadro 
   * ********************************************************* */
   private static int[] CamadadeEnlaceReceptoraControleDeErroBitParidadeImpar(int[] quadro) {
-    return quadro;
+    FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
+
+    // Descobre o tamanho total de bits, incluindo o bit de paridade
+    int totalBitsRecebidos = quadro.length * 32;
+
+    // Se o quadro estiver vazio, nao ha nada a fazer.
+    if (totalBitsRecebidos == 0) {
+      return quadro;
+    }
+
+    // 2. inicializar contador de um
+    int contadorDeUns = 0;
+
+    // 3. percorrer quadro recebido[]
+    // 4. para cada 1 em quadro recebido[]
+    for (int i = 0; i < totalBitsRecebidos; i++) {
+      if (auxiliar.lerBits(quadro, i, 1) == 1) {
+        contadorDeUns++; // 5. contador de um ++
+      }
+    } // 6. fim do para cada
+
+    System.out.println(contadorDeUns);
+
+    // 7. se contador de um % 2 == 0 (par, indica erro)
+    if (contadorDeUns % 2 == 0) {
+      // 9. alerta(houve um erro de paridade)
+      Alert alert = new Alert(AlertType.ERROR);
+      alert.setTitle("Erro de Transmissão");
+      alert.setHeaderText("Erro de Paridade Detectado");
+      alert.setContentText("Um erro foi detectado nos dados recebidos! O controle de paridade impar falhou (a contagem de bits '1' é par).");
+      
+      // showAndWait() trava a execucao ate o usuario fechar o alerta
+      // Eh melhor usar show() se a simulacao precisar continuar rodando
+      alert.show(); 
+    }
+    // 8. nao houve erro (Nao faz nada, conforme solicitado)
+    // 10. fim do se
+
+    // Agora, removemos o bit de paridade para passar apenas os dados
+    
+    // 1. inicializar quadro controlado
+    // O quadro de dados real eh 1 bit menor que o quadro recebido
+    int totalBitsDeDados = totalBitsRecebidos - 1;
+
+    // Se o quadro so tinha o bit de paridade (ou estava vazio), retorna vazio
+    if (totalBitsDeDados <= 0) {
+        return new int[0];
+    }
+
+    // Calcula o tamanho do novo array de int[]
+    int tamanhoNovoArray = (totalBitsDeDados + 31) / 32;
+    int[] quadroControlado = new int[tamanhoNovoArray];
+
+    // 11. remover quadrorecebido[ultima posicao]
+    // 12. quadro controlado = quadro recebido
+    // (Isso eh feito copiando todos os bits, *exceto* o ultimo)
+    for (int i = 0; i < totalBitsDeDados; i++) {
+      int bit = auxiliar.lerBits(quadro, i, 1);
+      auxiliar.escreverBits(quadroControlado, i, bit, 1);
+    }
+
+    // 13. retorne quadro controlado
+    return quadroControlado;
   } // fim do metodo
   /**************************************************************
   * Metodo: CamadadeEnlaceReceptoraControleDeErroCRC
@@ -321,7 +445,87 @@ FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
   * @return quadro 
   * ********************************************************* */
   private static int[] CamadadeEnlaceReceptoraControleDeErroCRC(int[] quadro) {
-    return quadro;
+    FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
+    
+    // Descobre o tamanho total de bits, incluindo o bit de paridade
+    int totalBitsRecebidos = quadro.length * 32;
+
+    if (totalBitsRecebidos < 32) {
+        // Frame muito curto para conter CRC, considera erro ou frame vazio
+        if(totalBitsRecebidos > 0) {
+          Alert alert = new Alert(AlertType.ERROR);
+          alert.setTitle("Erro de Transmissão");
+          alert.setHeaderText("Erro de CRC Detectado");
+          alert.setContentText("Quadro recebido é menor que o proprio CRC.");
+          alert.show(); 
+        }
+        return new int[0]; // Retorna vazio
+    }
+
+    int totalBitsDeDados = totalBitsRecebidos - 32;
+
+    // 1. Calcular o CRC com base APENAS nos dados recebidos
+    final int POLY = 0x04C11DB7;
+    final int INIT = 0xFFFFFFFF;
+    final int XOROUT = 0xFFFFFFFF;
+    int reg = INIT;
+
+    // Processar bits de dados (excluindo o CRC anexado)
+    for (int i = 0; i < totalBitsDeDados; i++) {
+        int bit = auxiliar.lerBits(quadro, i, 1); 
+        int top_bit = (reg >>> 31) & 1;
+        reg = (reg << 1) | bit;
+        
+        if (top_bit == 1) {
+            reg = reg ^ POLY;
+        }
+    }
+
+    // Processar os 32 bits '0' virtuais
+    for (int i = 0; i < 32; i++) {
+        int top_bit = (reg >>> 31) & 1;
+        reg = (reg << 1) | 0;
+        
+        if (top_bit == 1) {
+            reg = reg ^ POLY;
+        }
+    }
+
+    int crcCalculado = reg ^ XOROUT;
+
+    // 2. Ler o CRC que foi anexado no final do quadro
+    int crcRecebido = auxiliar.lerBits(quadro, totalBitsDeDados, 32);
+
+    if (crcCalculado != crcRecebido) {
+        Alert alert = new Alert(AlertType.ERROR);
+        alert.setTitle("Erro de Transmissão");
+        alert.setHeaderText("Erro de CRC Detectado");
+        
+        // Correcao para StringBuilder
+        StringBuilder sb = new StringBuilder();
+        sb.append("Um erro foi detectado nos dados recebidos! O CRC falhou.\n");
+        sb.append("Calculado: 0x").append(Integer.toHexString(crcCalculado).toUpperCase()).append("\n");
+        sb.append("Recebido:  0x").append(Integer.toHexString(crcRecebido).toUpperCase());
+        
+        alert.setContentText(sb.toString());
+        alert.show(); 
+    }
+
+    // 4. Remover o CRC e retornar apenas os dados
+    if (totalBitsDeDados == 0) {
+        return new int[0]; // Nao havia dados, apenas CRC
+    }
+
+    int tamanhoNovoArray = (totalBitsDeDados + 31) / 32;
+    int[] quadroControlado = new int[tamanhoNovoArray];
+
+    // Copia todos os bits, *exceto* os ultimos 32
+    for (int i = 0; i < totalBitsDeDados; i++) {
+        int bit = auxiliar.lerBits(quadro, i, 1);
+        auxiliar.escreverBits(quadroControlado, i, bit, 1);
+    }
+
+    return quadroControlado;
   } // fim do metodo
     /**************************************************************
   * Metodo: CamadadeEnlaceReceptoraControleDeErroCodigoDeHamming
@@ -330,6 +534,81 @@ FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
   * @return quadro 
   * ********************************************************* */
   private static int[] CamadadeEnlaceReceptoraControleDeErroCodigoDeHamming(int[] quadro) {
-    return quadro;
+    FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
+    int N = quadro.length * 32; // N = tamanho total do quadro recebido
+
+    if (N == 0) {
+      return new int[0];
+    }
+
+    // 1. Calcular a Sindrome (baseado no pseudocodigo)
+    int syndrome = 0;
+    int posParidade = 1;
+
+    // 'r' eh o numero de bits de paridade, precisamos conta-los
+    int r = 0; 
+    
+    // WHILE pos_paridade <= N
+    while (posParidade <= N) {
+      r++; // Conta quantos bits de paridade existem
+      int soma = 0;
+
+      // FOR i FROM 1 TO N
+      for (int i = 1; i <= N; i++) {
+        // IF (i AND pos_paridade) != 0
+        if ((i & posParidade) != 0) {
+          int bit = auxiliar.lerBits(quadro, i - 1, 1); // Le da posicao 0-based
+          soma = soma ^ bit; // soma = soma XOR received_bits[i]
+        }
+      }
+
+      // IF soma != 0
+      if (soma != 0) {
+        syndrome = syndrome + posParidade; // Marca a paridade que falhou
+      }
+      
+      posParidade = posParidade * 2; // Proximo bit de paridade
+    }
+
+    // 3) Analisar a sindrome
+    if (syndrome != 0) {
+      Alert alert = new Alert(AlertType.ERROR);
+      alert.setTitle("Erro de Transmissão");
+      alert.setHeaderText("Erro de Hamming Detectado!");
+
+      StringBuilder sb = new StringBuilder();
+      sb.append("Um erro foi detectado nos dados recebidos!\n");
+      sb.append("A verificação de Hamming falhou.\n");
+      sb.append("Posição do erro (Síndrome): ").append(syndrome);
+      
+      alert.setContentText(sb.toString());
+      alert.show();
+      // NOTA: O exercicio nao pede correcao, apenas deteccao.
+      // Se pedisse, poderiamos inverter o bit na 'posicao - 1' (syndrome - 1)
+    }
+
+    // 4. Extrair os bits de dados originais (remover os bits de paridade)
+    int totalDataBits = N - r;
+    if (totalDataBits <= 0) {
+      return new int[0];
+    }
+
+    int tamanhoNovoArray = (totalDataBits + 31) / 32;
+    int[] quadroControlado = new int[tamanhoNovoArray];
+    int ponteiroEscrita = 0;
+
+    // Itera por todas as posicoes do quadro recebido
+    for (int pos = 1; pos <= N; pos++) {
+      // Se NAO for potencia de 2, eh um bit de dado
+      if ((pos & (pos - 1)) != 0) {
+        if (ponteiroEscrita < totalDataBits) {
+          int bit = auxiliar.lerBits(quadro, pos - 1, 1);
+          auxiliar.escreverBits(quadroControlado, ponteiroEscrita, bit, 1);
+          ponteiroEscrita++;
+        }
+      }
+    }
+
+    return quadroControlado;
   } // fim do metodo
 } // Fim da classe

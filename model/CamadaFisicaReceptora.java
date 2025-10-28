@@ -174,7 +174,7 @@ public class CamadaFisicaReceptora {
     final int VIOLACAO = 0b1100;
     final int TAMANHO_VIOLACAO_BITS = 4;
 
-    int totalBitsSinal = auxiliar.descobrirTotalDeBitsReais(quadro);
+    int totalBitsSinal = quadro.length * 32;
     if (totalBitsSinal == 0)
       return new int[0];
 
