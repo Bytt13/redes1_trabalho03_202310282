@@ -21,6 +21,7 @@ public class CamadaEnlaceDadosReceptora {
   * @return void 
   * ********************************************************* */
   public CamadaEnlaceDadosReceptora(int[] quadro) {
+
     int[] quadroOrdenado = CamadaDeEnlaceReceptoraControleDeFluxo(quadro);
     int[] quadroControlado = CamadaDeEnlaceReceptoraControleDeErro(quadroOrdenado);
     int[] quadroDesenquadrado = CamadaDeEnlaceReceptoraEnquadramento(quadroControlado);

@@ -63,6 +63,19 @@ public class CamadaFisicaTransmissora {
         totalDeBitsParaAnimar *= 2;
     }
     auxiliar.animate(controller, fluxoBrutoDeBits, totalDeBitsParaAnimar);
+
+    /* *********************************************************
+                        DEBUGGER DE SAIDA
+    ********************************************************* */
+    System.out.println("\n--- DEBUG: SAINDO DA CAMADA FISICA (TX) ---");
+    // Usamos 'descobrirTotalDeBitsReais' para nao imprimir o padding de zeros
+    int totalBitsReaisTx = auxiliar.descobrirTotalDeBitsReais(fluxoBrutoDeBits);
+    System.out.println(auxiliar.arrayDeBitsParaString(fluxoBrutoDeBits, totalBitsReaisTx));
+    System.out.println("----------------------------------------------\n");
+    /* *********************************************************
+                          FIM DO DEBUGGER
+    ********************************************************* */
+
     new MeioDeComunicacao(fluxoBrutoDeBits);
   } // Fim do metodo
   /* *********************************************************

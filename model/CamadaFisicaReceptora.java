@@ -43,6 +43,18 @@ public class CamadaFisicaReceptora {
         break;
     } // Fim do switch
 
+    /* *********************************************************
+                        DEBUGGER DE CHEGADA
+    ********************************************************* */
+    FuncoesAuxiliares auxiliarDebug = new FuncoesAuxiliares();
+    System.out.println("\n--- DEBUG: CHEGANDO NA CAMADA FISICA (RX) ---");
+    // Usamos 'descobrirTotalDeBitsReais' para nao imprimir o padding
+    int totalBitsReaisRx = auxiliarDebug.descobrirTotalDeBitsReais(fluxoBrutoDeBits);
+    System.out.println(auxiliarDebug.arrayDeBitsParaString(fluxoBrutoDeBits, totalBitsReaisRx));
+    System.out.println("---------------------------------------------\n");
+    /* *********************************************************
+                          FIM DO DEBUGGER
+    ********************************************************* */
     // Chama a proxima camada
     new CamadaEnlaceDadosReceptora(fluxoBrutoDeBits);
   } // Fim do metodo
@@ -157,7 +169,9 @@ public class CamadaFisicaReceptora {
         // O "ultimo nivel" para a proxima iteracao sera o segundo nivel do par atual.
         ultimoNivel = segundoNivelDoPar;
     } // fim do for
+
     return decodificado; // retorno da funcao
+    
   } // Fim do metodo
   
   /**************************************************************
@@ -234,7 +248,5 @@ public class CamadaFisicaReceptora {
       auxiliar.escreverBits(resultadoFinal, j, bit, 1);
     }
     return resultadoFinal;
-
-
   }// fim do metodo
 } // fim da classe

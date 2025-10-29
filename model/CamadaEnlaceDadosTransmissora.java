@@ -23,7 +23,6 @@ public class CamadaEnlaceDadosTransmissora {
     int[] quadroEnquadrado = CamadaDeEnlaceTransmissoraEnquadramento(quadro);
     int[] quadroControlado = CamadaDeEnlaceTransmissoraControleDeErro(quadroEnquadrado);
     int[] quadroOrdenado = CamadaDeEnlaceTransmissoraControleDeFluxo(quadroControlado);
-
     new CamadaFisicaTransmissora(quadroOrdenado);
   } //Fim do metodo
   /**************************************************************

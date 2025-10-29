@@ -289,7 +289,7 @@ public int lerBits(int[] array, int posInicialBit, int numBits) {
     for (int i = (quadro.length * 32) - 1; i >= 0; i--) {
       // if para verificar se os bits uteis acabaram
       if (lerBits(quadro, i, 1) == 1) {
-        return i + 2;
+        return i + 1;
       } // fim do if
     } // fim do for
 
