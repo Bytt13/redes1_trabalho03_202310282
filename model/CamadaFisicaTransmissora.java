@@ -1,5 +1,4 @@
-/***************************************************************** 
-* Autor............: Lucas de Menezes Chaves
+/***************************************************************** * Autor............: Lucas de Menezes Chaves
 * Matricula........: 202310282
 * Inicio...........: 19/08/2025
 * Ultima alteracao.: 29/08/2025
@@ -60,7 +59,16 @@ public class CamadaFisicaTransmissora {
     int totalDeBitsParaAnimar = quadro.length * 32;
     // Se a codificacao dobra o numero de bits (Manchester por exemplo), a animacao tambem deve dobrar.
     if (tipoDeCodificacao != 0) {
-        totalDeBitsParaAnimar *= 2;
+        // Ajuste para lidar com quadros de 1 int
+        if(controller.getEnquadramento().equals("Contagem de Caracteres")){
+          totalDeBitsParaAnimar = 5 * 8; // 5 bytes * 8 bits
+        } else {
+          totalDeBitsParaAnimar = auxiliar.descobrirTotalDeBitsReais(quadro);
+        }
+
+        if (tipoDeCodificacao != 0) {
+            totalDeBitsParaAnimar *= 2;
+        }
     }
     auxiliar.animate(controller, fluxoBrutoDeBits, totalDeBitsParaAnimar);
 
@@ -76,7 +84,25 @@ public class CamadaFisicaTransmissora {
                           FIM DO DEBUGGER
     ********************************************************* */
 
-    new MeioDeComunicacao(fluxoBrutoDeBits);
+    // --- MUDANCA PRINCIPAL ---
+    // Em vez de chamar 'new MeioDeComunicacao()', agora simulamos o erro
+    // e colocamos o quadro na fila (buffer) para a thread receptora pegar.
+    try {
+      // 1. Simula os erros (logica movida para um metodo estatico)
+      int[] fluxoComErros = MeioDeComunicacao.simularErros(fluxoBrutoDeBits);
+      
+      // 2. Coloca o quadro (com ou sem erros) na fila para o receptor
+      // O 'put' ficara bloqueado se a fila estiver cheia (tamanho 1)
+      // ate a thread receptora consumir o quadro anterior.
+      controller.getBufferTxParaRx().put(fluxoComErros);
+      
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      System.out.println("TX: Falha ao enviar quadro para o meio.");
+    }
+    // --- FIM DA MUDANCA ---
+
+    // removido: new MeioDeComunicacao(fluxoBrutoDeBits);
   } // Fim do metodo
   /* *********************************************************
       ATENCAO, ESSA PARTE EH SOMENTE PARA MOSTRAR NA GUI, NAO TEM VALOR FUNCIONAL

@@ -1,5 +1,4 @@
-/***************************************************************** 
-* Autor..............: Lucas de Menezes Chaves
+/***************************************************************** * Autor..............: Lucas de Menezes Chaves
 * Matricula........: 202310282
 * Inicio...........: 16/09/2025
 * Ultima alteracao.: 27/09/2025
@@ -12,6 +11,7 @@ import controller.TelaPrincipalController;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import utils.FuncoesAuxiliares;
+import javafx.application.Platform;
 
 public class CamadaEnlaceDadosReceptora {
   /**************************************************************
@@ -21,12 +21,35 @@ public class CamadaEnlaceDadosReceptora {
   * @return void 
   * ********************************************************* */
   public CamadaEnlaceDadosReceptora(int[] quadro) {
+    TelaPrincipalController controller = TelaPrincipalController.getController();
 
     int[] quadroOrdenado = CamadaDeEnlaceReceptoraControleDeFluxo(quadro);
+    // 1. O Controle de Erro (abaixo) agora define a flag de erro no controller
     int[] quadroControlado = CamadaDeEnlaceReceptoraControleDeErro(quadroOrdenado);
     int[] quadroDesenquadrado = CamadaDeEnlaceReceptoraEnquadramento(quadroControlado);
 
-    new CamadaDeAplicacaoReceptora(quadroDesenquadrado);
+    // 2. Verificamos a flag de erro que foi definida pelo ControleDeErro
+    boolean erroDetectado = controller.getErroDetectadoEReseta();
+    
+    // 3. Enviamos o ACK ou NACK
+    try {
+      if (erroDetectado) {
+        // Envia NACK (false)
+        System.out.println("RX: Erro detectado. Enviando NACK.");
+        controller.getBufferRxParaTx_ACK().put(false);
+      } else {
+        // Envia ACK (true)
+        System.out.println("RX: Quadro OK. Enviando ACK.");
+        controller.getBufferRxParaTx_ACK().put(true);
+        
+        // 4. Somente se o quadro estiver correto, enviamos para a aplicacao
+        new CamadaDeAplicacaoReceptora(quadroDesenquadrado);
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      System.out.println("RX: Falha ao enviar ACK/NACK.");
+    }
+
   } // Fim do metodo
   /**************************************************************
   * Metodo: CamadaDeEnlaceReceptoraEnquadramento
@@ -71,6 +94,10 @@ public class CamadaEnlaceDadosReceptora {
     TelaPrincipalController controller = TelaPrincipalController.getController();
     int tipoDeControle = auxiliar.controlCodification(controller.getControleErro()); // pega o controle de erro escolhido
     int[] quadroControlado; // quadro depois de passar pelo controle de erros
+    
+    // IMPORTANTE: Reseta a flag de erro antes de checar
+    controller.setErroDetectado(false);
+
     //switch para pegar o controle de erro 
     switch(tipoDeControle) {
       case 0: //bit de paridade par
@@ -113,7 +140,8 @@ FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
     String mensagemOriginal = controller.getMensagemOriginal();
 
     // Calcula o tamanho exato que o array final precisa ter
-    int tamanhoFinalArray = (mensagemOriginal.length() + 3) / 4;
+    // MODIFICADO: Agora esperamos apenas 1 int (1 quadro)
+    int tamanhoFinalArray = 1;
     int[] quadroDesenquadrado = new int[tamanhoFinalArray];
     int indiceDesenquadrado = 0; // Ponteiro para a proxima posicao livre no array final
 
@@ -248,9 +276,9 @@ FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
       FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
       TelaPrincipalController controller = TelaPrincipalController.getController();
 
-      // O tamanho final deve ser exatamente o da mensagem original
-      int tamanhoFinalBits = controller.getMensagemOriginal().length() * 8;
-      int tamanhoFinalInts = (tamanhoFinalBits + 31) / 32;
+      // O tamanho final deve ser 1 int (4 bytes = 32 bits)
+      int tamanhoFinalBits = 32;
+      int tamanhoFinalInts = 1;
       int[] quadroDesenquadrado = new int[tamanhoFinalInts];
       int ponteiroLeitura = 8; // Pula a FLAG inicial
       int ponteiroEscrita = 0;
@@ -306,9 +334,10 @@ FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
   * ********************************************************* */
   private static int[] CamadadeEnlaceReceptoraControleDeErroBitParidadePar(int[] quadro) {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
+    TelaPrincipalController controller = TelaPrincipalController.getController();
 
     // Descobre o tamanho total de bits, incluindo o bit de paridade
-    int totalBitsRecebidos = quadro.length * 32;
+    int totalBitsRecebidos = auxiliar.descobrirTotalDeBitsReais(quadro);
 
     // Se o quadro estiver vazio, nao ha nada a fazer.
     if (totalBitsRecebidos == 0) {
@@ -336,8 +365,10 @@ FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
       alert.setHeaderText("Erro de Paridade Detectado");
       alert.setContentText("Um erro foi detectado nos dados recebidos! O controle de paridade par falhou (a contagem de bits '1' é ímpar).");
       
-      // Eh melhor usar show() se a simulacao precisar continuar rodando
-      alert.show(); 
+      // Define a flag de erro no controller
+      controller.setErroDetectado(true);
+
+      Platform.runLater(() -> alert.show());
     }
     // 8. nao houve erro (Nao faz nada, conforme solicitado)
     // 10. fim do se
@@ -376,9 +407,10 @@ FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
   * ********************************************************* */
   private static int[] CamadadeEnlaceReceptoraControleDeErroBitParidadeImpar(int[] quadro) {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
+    TelaPrincipalController controller = TelaPrincipalController.getController();
 
     // Descobre o tamanho total de bits, incluindo o bit de paridade
-    int totalBitsRecebidos = quadro.length * 32;
+    int totalBitsRecebidos = auxiliar.descobrirTotalDeBitsReais(quadro);
 
     // Se o quadro estiver vazio, nao ha nada a fazer.
     if (totalBitsRecebidos == 0) {
@@ -406,9 +438,10 @@ FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
       alert.setHeaderText("Erro de Paridade Detectado");
       alert.setContentText("Um erro foi detectado nos dados recebidos! O controle de paridade impar falhou (a contagem de bits '1' é par).");
       
-      // showAndWait() trava a execucao ate o usuario fechar o alerta
-      // Eh melhor usar show() se a simulacao precisar continuar rodando
-      alert.show(); 
+      // Define a flag de erro no controller
+      controller.setErroDetectado(true);
+
+      Platform.runLater(() -> alert.show());
     }
     // 8. nao houve erro (Nao faz nada, conforme solicitado)
     // 10. fim do se
@@ -447,9 +480,10 @@ FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
   * ********************************************************* */
   private static int[] CamadadeEnlaceReceptoraControleDeErroCRC(int[] quadro) {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
-    
+    TelaPrincipalController controller = TelaPrincipalController.getController();
+
     // Descobre o tamanho total de bits, incluindo o bit de paridade
-    int totalBitsRecebidos = quadro.length * 32;
+    int totalBitsRecebidos = auxiliar.descobrirTotalDeBitsReais(quadro);
 
     if (totalBitsRecebidos < 32) {
         // Frame muito curto para conter CRC, considera erro ou frame vazio
@@ -458,7 +492,9 @@ FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
           alert.setTitle("Erro de Transmissão");
           alert.setHeaderText("Erro de CRC Detectado");
           alert.setContentText("Quadro recebido é menor que o proprio CRC.");
-          alert.show(); 
+          
+          controller.setErroDetectado(true);
+          Platform.runLater(() -> alert.show());
         }
         return new int[0]; // Retorna vazio
     }
@@ -509,7 +545,9 @@ FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
         sb.append("Recebido:  0x").append(Integer.toHexString(crcRecebido).toUpperCase());
         
         alert.setContentText(sb.toString());
-        alert.show(); 
+        
+        controller.setErroDetectado(true);
+        Platform.runLater(() -> alert.show());
     }
 
     // 4. Remover o CRC e retornar apenas os dados
@@ -536,7 +574,9 @@ FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
   * ********************************************************* */
   private static int[] CamadadeEnlaceReceptoraControleDeErroCodigoDeHamming(int[] quadro) {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
-    int N = quadro.length * 32; // N = tamanho total do quadro recebido
+    TelaPrincipalController controller = TelaPrincipalController.getController();
+
+    int N = auxiliar.descobrirTotalDeBitsReais(quadro); // N = tamanho total do quadro recebido
 
     if (N == 0) {
       return new int[0];
@@ -583,7 +623,9 @@ FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
       sb.append("Posição do erro (Síndrome): ").append(syndrome);
       
       alert.setContentText(sb.toString());
-      alert.show();
+      
+      controller.setErroDetectado(true);
+      Platform.runLater(() -> alert.show());
       // NOTA: O exercicio nao pede correcao, apenas deteccao.
       // Se pedisse, poderiamos inverter o bit na 'posicao - 1' (syndrome - 1)
     }

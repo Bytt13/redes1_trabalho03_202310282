@@ -9,17 +9,35 @@ package controller;
 
 import javafx.fxml.FXML;
 import javafx.animation.AnimationTimer;
+import javafx.application.Platform;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Button;
 import model.AplicacaoTransmissora;
+import model.CamadaFisicaReceptora;
 import javafx.scene.control.TextArea;
 import javafx.scene.paint.Color;
 import javafx.scene.control.ComboBox;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 // Fim dos imports que vamos precisar
 
 public class TelaPrincipalController {
   public static TelaPrincipalController controller; // Cria a variavel de controller para passarmos adiante no codigo
+
+  // Filas (buffers) para comunicacao assincrona
+  // bufferTxParaRx: Fila para quadros de DADOS (Transmissor -> Receptor)
+  // bufferRxParaTx_ACK: Fila para ACKs/NACKs (Receptor -> Transmissor)
+  // Usamos tamanho 1 para simular o "Stop-and-Wait" (so cabe 1 quadro/ack por vez)
+  private final BlockingQueue<int[]> bufferTxParaRx = new LinkedBlockingQueue<>(1);
+  private final BlockingQueue<Boolean> bufferRxParaTx_ACK = new LinkedBlockingQueue<>(1);
+  
+  // Flag para o receptor sinalizar se o quadro recebido continha erros
+  private boolean flagErroDetectado = false;
+  
+  // Thread que simula o lado Receptor ouvindo
+  private Thread threadReceptora;
 
   @FXML
   private Button botaoEnviar; //Declara a variavel responsavel pelo botao
@@ -73,6 +91,9 @@ public class TelaPrincipalController {
     comboBoxErro.getSelectionModel().selectFirst(); // Deixa o primeiro item ja selecionado
     comboBoxControleErro.getItems().addAll("Bit de Paridade par", "Bit de paridade impar", "CRC", "Codigo de Hamming"); // adiciona as opcoes ao combobox
     comboBoxControleErro.getSelectionModel().selectFirst(); // deixa o primeiro item ja selecionado
+
+    // Inicia a thread receptora para ficar ouvindo
+    iniciarThreadReceptora();
   } // Fim do metodo
 
   /**************************************************************
@@ -97,9 +118,86 @@ public class TelaPrincipalController {
     textAreaDecodificada.clear();
     textAreaMensagemFinal.clear();
     
-    // Chamada da camada de aplicacao transmissora
-    new AplicacaoTransmissora();
+    // Limpa as filas de comunicacao para uma nova transmissao
+    bufferTxParaRx.clear();
+    bufferRxParaTx_ACK.clear();
+
+    // Chamada da camada de aplicacao transmissora EM UMA NOVA THREAD
+    // Isso impede que a logica de Stop-and-Wait (com poll/timeout) trave a GUI
+    new Thread(new AplicacaoTransmissora()).start();
   } // fim do metodo
+
+  /**************************************************************
+  * Metodo: iniciarThreadReceptora
+  * Funcao: Inicia a thread que simula o receptor, ouvindo a fila de quadros
+  * @param void
+  * @return void 
+  * ********************************************************* */
+  private void iniciarThreadReceptora() {
+    threadReceptora = new Thread(() -> {
+      try {
+        // Loop infinito para simular o receptor ouvindo
+        while (true) {
+          // 1. Espera (bloqueado) ate que um quadro chegue na fila
+          int[] quadroRecebidoDoMeio = bufferTxParaRx.take();
+          
+          // 2. Inicia a pilha de recepcao (Camada Fisica -> Enlace -> Aplicacao)
+          // Isso executara toda a logica de decodificacao, controle de erro e
+          // eventualmente enviara um ACK/NACK de volta.
+          new CamadaFisicaReceptora(quadroRecebidoDoMeio);
+        }
+      } catch (InterruptedException e) {
+        System.out.println("Thread Receptora interrompida.");
+      }
+    });
+    threadReceptora.setDaemon(true); // Garante que a thread feche com o programa
+    threadReceptora.start();
+  } // Fim do metodo
+
+  // --- METODOS DE ACESSO AS FILAS E FLAGS ---
+
+  /****************************************************************
+  * Metodo: getBufferTxParaRx
+  * Funcao: retorna a fila de DADOS (TX -> RX)
+  * @param void
+  * @return BlockingQueue<int[]>
+  * ********************************************************* */
+  public BlockingQueue<int[]> getBufferTxParaRx() {
+    return bufferTxParaRx;
+  }
+
+  /****************************************************************
+  * Metodo: getBufferRxParaTx_ACK
+  * Funcao: retorna a fila de ACKs (RX -> TX)
+  * @param void
+  * @return BlockingQueue<Boolean>
+  * ********************************************************* */
+  public BlockingQueue<Boolean> getBufferRxParaTx_ACK() {
+    return bufferRxParaTx_ACK;
+  }
+
+  /****************************************************************
+  * Metodo: setErroDetectado
+  * Funcao: Define a flag de erro (usada pela Camada de Enlace Receptora)
+  * @param erro | true se erro foi detectado
+  * @return void
+  * ********************************************************* */
+  public synchronized void setErroDetectado(boolean erro) {
+    this.flagErroDetectado = erro;
+  }
+
+  /****************************************************************
+  * Metodo: getErroDetectadoEReseta
+  * Funcao: Le e reseta a flag de erro (usado pela Camada de Enlace Receptora)
+  * @param void
+  * @return boolean | true se erro foi detectado
+  * ********************************************************* */
+  public synchronized boolean getErroDetectadoEReseta() {
+    boolean erro = this.flagErroDetectado;
+    this.flagErroDetectado = false; // Reseta a flag apos a leitura
+    return erro;
+  }
+
 
   /***********************************************************************************
   * Metodo: desempacotarBitsParaAnimacao 
@@ -150,80 +248,83 @@ public class TelaPrincipalController {
   * @return void
   * ********************************************************* */
   public void drawSignal(int[] bits) {
-    // Finaliza possiveis animacoes anteriores antes de comecar
-    // if para verificar se a animacao eh nula
-    if (animation != null) {
-      animation.stop(); // para a animacao
-    } // fim do if
-    // if para verificar se os bits sao nulos
-    if (bits == null || bits.length == 0) {
-        return; // fim precoce da funcao
-    } // fim do if
+    // GARANTE QUE A ATUALIZACAO DA GUI OCORRA NA THREAD DO JAVAFX
+    Platform.runLater(() -> {
+      // Finaliza possiveis animacoes anteriores antes de comecar
+      // if para verificar se a animacao eh nula
+      if (animation != null) {
+        animation.stop(); // para a animacao
+      } // fim do if
+      // if para verificar se os bits sao nulos
+      if (bits == null || bits.length == 0) {
+          return; // fim precoce da funcao
+      } // fim do if
 
-    final double LARGURA_BIT;
-    // if para verificar a codificacao
-    if (getCodificacao().equals("Manchester") || getCodificacao().equals("Manchester Diferencial")) {
-      LARGURA_BIT = 20.0;
-    } else {
-      LARGURA_BIT = 40.0;
-    } // fim do if-else
+      final double LARGURA_BIT;
+      // if para verificar a codificacao
+      if (getCodificacao().equals("Manchester") || getCodificacao().equals("Manchester Diferencial")) {
+        LARGURA_BIT = 20.0;
+      } else {
+        LARGURA_BIT = 40.0;
+      } // fim do if-else
 
-    final double ALTURA_GRAFICO = canvasAnimacao.getHeight();
-    final double NIVEL_ALTO_Y = ALTURA_GRAFICO * 0.25;
-    final double NIVEL_BAIXO_Y = ALTURA_GRAFICO * 0.75;
-    final double VELOCIDADE_PX_POR_SEGUNDO = 80.0;
-    final double LARGURA_TOTAL_DA_ONDA = bits.length * LARGURA_BIT;
-    final long tempoInicialNano = System.nanoTime();
+      final double ALTURA_GRAFICO = canvasAnimacao.getHeight();
+      final double NIVEL_ALTO_Y = ALTURA_GRAFICO * 0.25;
+      final double NIVEL_BAIXO_Y = ALTURA_GRAFICO * 0.75;
+      final double VELOCIDADE_PX_POR_SEGUNDO = 80.0;
+      final double LARGURA_TOTAL_DA_ONDA = bits.length * LARGURA_BIT;
+      final long tempoInicialNano = System.nanoTime();
 
-    animation = new AnimationTimer() {
-      /**************************************************************
-      * Metodo: handle
-      * Funcao: realiza a parte de calculos e verificacao da animacao
-      * @param now | temporizador
-      * @return void
-      * ********************************************************* */
-      @Override
-      public void handle(long now) {
-        double tempoDecorridoSeg = (now - tempoInicialNano) / 1_000_000_000.0;
-        double offsetX = tempoDecorridoSeg * VELOCIDADE_PX_POR_SEGUNDO;
-        double posicaoInicialDaOnda = offsetX - LARGURA_TOTAL_DA_ONDA;
+      animation = new AnimationTimer() {
+        /**************************************************************
+        * Metodo: handle
+        * Funcao: realiza a parte de calculos e verificacao da animacao
+        * @param now | temporizador
+        * @return void
+        * ********************************************************* */
+        @Override
+        public void handle(long now) {
+          double tempoDecorridoSeg = (now - tempoInicialNano) / 1_000_000_000.0;
+          double offsetX = tempoDecorridoSeg * VELOCIDADE_PX_POR_SEGUNDO;
+          double posicaoInicialDaOnda = offsetX - LARGURA_TOTAL_DA_ONDA;
 
-        gc.clearRect(0, 0, canvasAnimacao.getWidth(), ALTURA_GRAFICO);
-        gc.setStroke(Color.web("#00FF00"));
-        gc.setLineWidth(2.5);
-
-        // Assumimos que o sinal comeca em "baixo" antes do primeiro bit
-        double pontoYAnterior = NIVEL_BAIXO_Y; 
-
-        // for para realizar as animacoes
-        for (int i = 0; i < bits.length; i++) {
-          double startX = posicaoInicialDaOnda + (i * LARGURA_BIT);
-          double endX = startX + LARGURA_BIT;
-          double pontoYAtual = (bits[i] == 1) ? NIVEL_ALTO_Y : NIVEL_BAIXO_Y;
-
-          // if para verificar as posicoes de animacao
-          if (endX < 0 || startX > canvasAnimacao.getWidth()) {
-             pontoYAnterior = pontoYAtual;
-             continue;
-          } // fim do if
-
-          // if para verificar os pontos de animacao
-          if (pontoYAtual != pontoYAnterior) {
-            gc.strokeLine(startX, pontoYAnterior, startX, pontoYAtual);
-          } // fim do if
-
-          gc.strokeLine(startX, pontoYAtual, endX, pontoYAtual);
-          pontoYAnterior = pontoYAtual;
-        }
-
-        // if para verificar o inicio da animacao
-        if (posicaoInicialDaOnda > canvasAnimacao.getWidth()) {
-          this.stop();
           gc.clearRect(0, 0, canvasAnimacao.getWidth(), ALTURA_GRAFICO);
-        } // fim do if
-      } // fim do metodo
-    };
-    animation.start(); // comeca a animacao
+          gc.setStroke(Color.web("#00FF00"));
+          gc.setLineWidth(2.5);
+
+          // Assumimos que o sinal comeca em "baixo" antes do primeiro bit
+          double pontoYAnterior = NIVEL_BAIXO_Y; 
+
+          // for para realizar as animacoes
+          for (int i = 0; i < bits.length; i++) {
+            double startX = posicaoInicialDaOnda + (i * LARGURA_BIT);
+            double endX = startX + LARGURA_BIT;
+            double pontoYAtual = (bits[i] == 1) ? NIVEL_ALTO_Y : NIVEL_BAIXO_Y;
+
+            // if para verificar as posicoes de animacao
+            if (endX < 0 || startX > canvasAnimacao.getWidth()) {
+              pontoYAnterior = pontoYAtual;
+              continue;
+            } // fim do if
+
+            // if para verificar os pontos de animacao
+            if (pontoYAtual != pontoYAnterior) {
+              gc.strokeLine(startX, pontoYAnterior, startX, pontoYAtual);
+            } // fim do if
+
+            gc.strokeLine(startX, pontoYAtual, endX, pontoYAtual);
+            pontoYAnterior = pontoYAtual;
+          }
+
+          // if para verificar o inicio da animacao
+          if (posicaoInicialDaOnda > canvasAnimacao.getWidth()) {
+            this.stop();
+            gc.clearRect(0, 0, canvasAnimacao.getWidth(), ALTURA_GRAFICO);
+          } // fim do if
+        } // fim do metodo
+      };
+      animation.start(); // comeca a animacao
+    });
   } // fim do metodo
 
   /****************************************************************
@@ -234,7 +335,10 @@ public class TelaPrincipalController {
   * ********************************************************* */
   public void setTextAreaCodificada(String texto)
   {
-    textAreaCodificada.setText(texto); // define o texto
+    // GARANTE QUE A ATUALIZACAO DA GUI OCORRA NA THREAD DO JAVAFX
+    Platform.runLater(() -> {
+      textAreaCodificada.setText(texto); // define o texto
+    });
   } // Fim do metodo
 
   /****************************************************************
@@ -245,18 +349,24 @@ public class TelaPrincipalController {
   * ********************************************************* */
   public void setTextAreaDecodificada(String texto)
   {
-    textAreaDecodificada.setText(texto); // define o texto
+    // GARANTE QUE A ATUALIZACAO DA GUI OCORRA NA THREAD DO JAVAFX
+    Platform.runLater(() -> {
+      textAreaDecodificada.setText(texto); // define o texto
+    });
   } // Fim do metodo
 
   /****************************************************************
   * Metodo: setTextAreaMensagemFinal
-  * Funcao: muda o texto do text area da mensagem final
+  * Funcao: muda o texto do text area da mensagem final (agora adiciona)
   * @param texto | o texto que vai aparecer na caixa de texto
   * @return void 
   * ********************************************************* */
   public void setTextAreaMensagemFinal(String texto)
   {
-    textAreaMensagemFinal.setText(texto); // define o texto
+    // GARANTE QUE A ATUALIZACAO DA GUI OCORRA NA THREAD DO JAVAFX
+    Platform.runLater(() -> {
+      textAreaMensagemFinal.appendText(texto); // define o texto
+    });
   } // Fim do metodo
 
   /****************************************************************

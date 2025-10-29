@@ -1,5 +1,4 @@
-/***************************************************************** 
-* Autor..............: Lucas de Menezes Chaves
+/***************************************************************** * Autor..............: Lucas de Menezes Chaves
 * Matricula........: 202310282
 * Inicio...........: 22/08/2025
 * Ultima alteracao.: 29/08/2025
@@ -20,7 +19,10 @@ public class AplicacaoReceptora {
  * ********************************************************* */
   public AplicacaoReceptora(String mensagem) {
     TelaPrincipalController controller = TelaPrincipalController.getController(); // pega o controller que vamos usar para mostrar a mensagem
-    controller.setTextAreaMensagemFinal(mensagem); // mostra a mensagem na caixa de texto da GUI
+    
+    // MODIFICADO: Usa appendText para construir a mensagem quadro a quadro
+    controller.setTextAreaMensagemFinal(mensagem); 
+    
     // if para comparar as mensagens e emitir o alerta
   }// Fim do metodo
 } // Fim da classe

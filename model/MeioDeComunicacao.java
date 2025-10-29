@@ -15,12 +15,12 @@ import utils.FuncoesAuxiliares;
 public class MeioDeComunicacao {
 
 /**************************************************************
-* Metodo: MeioDeComunicacao
-* Funcao: transfere a mensagem em forma de bits, aplicando a logica de erros por quadro.
+* Metodo: simularErros
+* Funcao: (Metodo estatico) Simula a transferencia com erros.
 * @param fluxoBrutoDeBits | fluxo de bits recebido
-* @return void 
+* @return int[] | fluxo de bits com possiveis erros
 * ********************************************************* */
-  public MeioDeComunicacao(int[] fluxoBrutoDeBits) {
+  public static int[] simularErros(int[] fluxoBrutoDeBits) {
     TelaPrincipalController controller  = TelaPrincipalController.getController();
     Random random = new Random();
     double taxaDeErro = controller.getTaxaDeErro();
@@ -50,8 +50,8 @@ public class MeioDeComunicacao {
     
     // Evita divisao por zero se o quadro for vazio
     if (tamanhoFisicoDoQuadroEmBits <= 0) {
-      new CamadaFisicaReceptora(fluxoBrutoDeBitsPontoB);
-      return;
+      // return fluxoBrutoDeBitsPontoB; // (Original: new CamadaFisicaReceptora)
+      return new int[0];
     }
     
     int posicaoDoErroNesteQuadro = -1; // -1 significa que nao ha erro agendado para o quadro atual
@@ -87,6 +87,7 @@ public class MeioDeComunicacao {
 
     } // Fim do for de transferencia bit a bit
     
-    new CamadaFisicaReceptora(fluxoBrutoDeBitsPontoB);
+    // new CamadaFisicaReceptora(fluxoBrutoDeBitsPontoB); // Removido
+    return fluxoBrutoDeBitsPontoB; // Retorna o quadro com (ou sem) erros
   } // Fim do metodo
 } // Fim da classe

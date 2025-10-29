@@ -10,21 +10,86 @@ package model;
 
 import controller.TelaPrincipalController;
 import utils.FuncoesAuxiliares;
+import java.util.concurrent.TimeUnit; // Import para o Temporizador (Timeout)
 
 
 public class CamadaEnlaceDadosTransmissora {
+  
+  // Define o tempo de timeout (em segundos)
+  private static final int TIMEOUT_SEGUNDOS = 3;
+
   /**************************************************************
   * Metodo: CamadaEnlaceDadosTransmissora
-  * Funcao: enquadra os bits e passa eles para camada seguinte
-  * @param quadro | bits recebidos
+  * Funcao: Implementa o controle de fluxo Stop-and-Wait.
+  * Quebra a mensagem em quadros, envia um, e espera por ACK.
+  * @param quadroCompleto | ATENCAO: Este eh o quadro COMPLETO da aplicacao
   * @return void 
   * ********************************************************* */
-  public CamadaEnlaceDadosTransmissora(int []quadro) {
-    int[] quadroEnquadrado = CamadaDeEnlaceTransmissoraEnquadramento(quadro);
-    int[] quadroControlado = CamadaDeEnlaceTransmissoraControleDeErro(quadroEnquadrado);
-    int[] quadroOrdenado = CamadaDeEnlaceTransmissoraControleDeFluxo(quadroControlado);
-    new CamadaFisicaTransmissora(quadroOrdenado);
+  public CamadaEnlaceDadosTransmissora(int []quadroCompleto) {
+    
+    TelaPrincipalController controller = TelaPrincipalController.getController();
+    int quadrosEnviados = 0;
+    int totalQuadros = quadroCompleto.length; // Assumindo 1 int = 1 quadro de dados
+
+    // Loop principal: envia um quadro de cada vez
+    while (quadrosEnviados < totalQuadros) {
+      // 1. Pega o proximo quadro (frame) para enviar
+      // Criamos um novo array de int[1] para representa-lo
+      int[] frame = new int[]{ quadroCompleto[quadrosEnviados] };
+
+      // 2. Aplica as subcamadas (Controle de Erro, Enquadramento)
+      // (As funcoes internas nao mudaram)
+      int[] quadroEnquadrado = CamadaDeEnlaceTransmissoraEnquadramento(frame);
+      int[] quadroControlado = CamadaDeEnlaceTransmissoraControleDeErro(quadroEnquadrado);
+      int[] quadroOrdenado = CamadaDeEnlaceTransmissoraControleDeFluxo(quadroControlado);
+      
+      boolean ackRecebido = false;
+      
+      // 3. Loop de Retransmissao (Stop-and-Wait)
+      while (!ackRecebido) {
+        System.out.println("TX: Enviando quadro ");
+        System.out.println(quadrosEnviados);
+        
+        // 4. Envia o quadro para a Camada Fisica (que o colocara na fila)
+        // Esta chamada eh sincrona, mas rapida (so codifica e poe na fila)
+        new CamadaFisicaTransmissora(quadroOrdenado);
+        
+        // 5. Espera pelo ACK (com timeout)
+        try {
+          // Tenta pegar um ACK da fila. Espera no maximo TIMEOUT_SEGUNDOS.
+          Boolean ack = controller.getBufferRxParaTx_ACK().poll(TIMEOUT_SEGUNDOS, TimeUnit.SECONDS);
+          
+          if (ack != null && ack == true) {
+            // ACK recebido!
+            System.out.println("TX: ACK recebido para o quadro ");
+            System.out.println(quadrosEnviados);
+            ackRecebido = true;
+            quadrosEnviados++; // Move para o proximo quadro
+          } else {
+            // NACK (ack == false) ou TIMEOUT (ack == null)
+            if (ack == null) {
+              System.out.println("TX: TIMEOUT. Retransmitindo quadro ");
+              System.out.println(quadrosEnviados);
+            } else {
+              System.out.println("TX: NACK recebido. Retransmitindo quadro ");
+              System.out.println(quadrosEnviados);
+            }
+            // O loop de retransmissao (while !ackRecebido) continuara
+          }
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt(); // Restaura o status de interrupcao
+          System.out.println("TX: Thread transmissora interrompida.");
+          return; // Sai do metodo
+        } // Fim do try-catch
+      } // Fim do loop de retransmissao
+    } // Fim do loop de quadros
+    
+    System.out.println("TX: Transmissao concluida.");
   } //Fim do metodo
+
+  // ... O RESTANTE DAS FUNCOES DESTA CLASSE (Enquadramento, Controle de Erro)
+  // ... PERMANECE EXATAMENTE O MESMO (conforme sua restrição) ...
+  
   /**************************************************************
   * Metodo: CamadaDeEnlaceTrasnmissoraEnquadramento
   * Funcao: enquadra os bits e passa eles para camada seguinte
