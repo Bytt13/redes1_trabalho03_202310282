@@ -13,15 +13,16 @@ import controller.TelaPrincipalController;
 import utils.FuncoesAuxiliares;
 
 public class MeioDeComunicacao {
-
+private CamadaFisicaTransmissora transmissor;
 /**************************************************************
 * Metodo: MeioDeComunicacao
 * Funcao: transfere a mensagem em forma de bits, aplicando a logica de erros por quadro.
 * @param fluxoBrutoDeBits | fluxo de bits recebido
 * @return void 
 * ********************************************************* */
-  public MeioDeComunicacao(int[] fluxoBrutoDeBits) {
+  public MeioDeComunicacao(int[] fluxoBrutoDeBits, CamadaFisicaTransmissora transmissor) {
     TelaPrincipalController controller  = TelaPrincipalController.getController();
+    this.transmissor = transmissor;
     Random random = new Random();
     double taxaDeErro = controller.getTaxaDeErro();
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
@@ -88,5 +89,25 @@ public class MeioDeComunicacao {
     } // Fim do for de transferencia bit a bit
     
     new CamadaFisicaReceptora(fluxoBrutoDeBitsPontoB);
+    enviarAck();
   } // Fim do metodo
+  /**************************************************************
+  * Metodo: enviarAck (NOVO)
+  * Funcao: Rota de retorno para o ACK. Chamado pelo receptor.
+  * @param ackQuadro | O quadro de ACK
+  * @return void 
+  * ********************************************************* */
+  public void enviarAck() {
+    FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
+    // Simula o retorno do ACK (sem erros)
+    int[] ackQuadro = new int[1]; // 1 int eh suficiente para 8 bits
+    int ackBits = 0b10101010; // Padrao de ACK fixo
+    auxiliar.escreverBits(ackQuadro, 0, ackBits, 8);
+    int[] quadroAckEnquadrado = CamadaEnlaceDadosTransmissora.CamadaDeEnlaceTransmissoraEnquadramento(ackQuadro);
+    int[] quadroAckControlado = CamadaEnlaceDadosTransmissora.CamadaDeEnlaceTransmissoraControleDeErro(quadroAckEnquadrado);
+    int[] quadroAckOrdenado = CamadaEnlaceDadosTransmissora.CamadaDeEnlaceTransmissoraControleDeFluxo(quadroAckControlado);
+    if (transmissor != null) {
+      transmissor.receberAck(quadroAckOrdenado);
+    }
+  } // Fim do metodo enviarAck
 } // Fim da classe

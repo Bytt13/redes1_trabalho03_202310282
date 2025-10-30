@@ -43,7 +43,7 @@ public class CamadaEnlaceDadosTransmissora {
   * @param quadro | bits recebidos
   * @return quadroEnquadrado 
   * ********************************************************* */
-  private static int[] CamadaDeEnlaceTransmissoraEnquadramento(int[] quadro) {
+  public static int[] CamadaDeEnlaceTransmissoraEnquadramento(int[] quadro) {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
     TelaPrincipalController controller = TelaPrincipalController.getController();
     int tipoDeEnquadramento = auxiliar.enquadCodification(controller.getEnquadramento()); // enquadramento escolhido
@@ -75,7 +75,7 @@ public class CamadaEnlaceDadosTransmissora {
   * @param quadro | bits recebidos
   * @return void 
   * ********************************************************* */
-  private static int[] CamadaDeEnlaceTransmissoraControleDeErro(int[] quadro) {
+  public static int[] CamadaDeEnlaceTransmissoraControleDeErro(int[] quadro) {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
     TelaPrincipalController controller = TelaPrincipalController.getController();
     int tipoDeControle = auxiliar.controlCodification(controller.getControleErro()); // pega o controle de erro escolhido
@@ -107,7 +107,7 @@ public class CamadaEnlaceDadosTransmissora {
   * @param quadro | bits recebidos
   * @return void 
   * ********************************************************* */
-  private static int[] CamadaDeEnlaceTransmissoraControleDeFluxo(int[] quadro) {
+  public static int[] CamadaDeEnlaceTransmissoraControleDeFluxo(int[] quadro) {
     return quadro;
   } //Fim do metodo
   /**************************************************************
@@ -116,7 +116,7 @@ public class CamadaEnlaceDadosTransmissora {
   * @param quadro | bits recebidos
   * @return quadroEnquadrado 
   * ********************************************************* */
-  private static int[] CamadaDeEnlaceTransmissoraEnquadramentoContagemDeCaracteres(int[] quadro) {
+  public static int[] CamadaDeEnlaceTransmissoraEnquadramentoContagemDeCaracteres(int[] quadro) {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
     // quantos caracteres vamos contar, por agora, sera em bytes, mas a funcao manipula bits
     final int caracteres = 4;
@@ -153,7 +153,7 @@ public class CamadaEnlaceDadosTransmissora {
   * @param quadro | bits recebidos
   * @return quadro 
   * ********************************************************* */
-  private static int[] CamadaDeEnlaceTransmissoraEnquadramentoInsercaoDeBytes(int[] quadro) {
+  public static int[] CamadaDeEnlaceTransmissoraEnquadramentoInsercaoDeBytes(int[] quadro) {
     final int FLAG = 0b01111110; // ~ em ASCII
     final int ESC = 0b01111101; // } em ASCII
     final int TAMANHO_SUBQUADRO_BYTES = 4; // de quantos em quantos bytes vai adicionar o flag
@@ -258,7 +258,7 @@ public class CamadaEnlaceDadosTransmissora {
   * @param quadro | bits recebidos
   * @return quadroEnquadrado 
   * ********************************************************* */
-  private static int[] CamadaDeEnlaceTransmissoraEnquadramentoInsercaoDeBits(int[] quadro) {
+  public static int[] CamadaDeEnlaceTransmissoraEnquadramentoInsercaoDeBits(int[] quadro) {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
     int totalDeBitsOriginal = quadro.length * 32;
     final int FLAG = 0b01111110;
@@ -333,7 +333,7 @@ public class CamadaEnlaceDadosTransmissora {
   * @param quadro | bits recebidos
   * @return quadro 
   * ********************************************************* */
-  private static int[] CamadaDeEnlaceTransmissoraEnquadramentoViolacaoCamadaFisica(int[] quadro) {
+  public static int[] CamadaDeEnlaceTransmissoraEnquadramentoViolacaoCamadaFisica(int[] quadro) {
     return quadro;
   } // Fim do metodo
   /**************************************************************
@@ -342,7 +342,7 @@ public class CamadaEnlaceDadosTransmissora {
   * @param quadro | bits recebidos
   * @return quadro 
   * ********************************************************* */
-  private static int[] CamadadeEnlaceTransmissoraControleDeErroBitParidadePar(int[] quadro) {
+  public static int[] CamadadeEnlaceTransmissoraControleDeErroBitParidadePar(int[] quadro) {
     // Cria uma instancia das funcoes auxiliares
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
 
@@ -401,7 +401,7 @@ public class CamadaEnlaceDadosTransmissora {
   * @param quadro | bits recebidos
   * @return quadro 
   * ********************************************************* */
-  private static int[] CamadadeEnlaceTransmissoraControleDeErroBitParidadeImpar(int[] quadro) {
+  public static int[] CamadadeEnlaceTransmissoraControleDeErroBitParidadeImpar(int[] quadro) {
     // Cria uma instancia das funcoes auxiliares
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
 
@@ -460,7 +460,7 @@ public class CamadaEnlaceDadosTransmissora {
   * @param quadro | bits recebidos
   * @return quadro 
   * ********************************************************* */
-  private static int[] CamadadeEnlaceTransmissoraControleDeErroCRC(int[] quadro) {
+  public static int[] CamadadeEnlaceTransmissoraControleDeErroCRC(int[] quadro) {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
     int totalBits = quadro.length * 32;
 
@@ -516,7 +516,7 @@ public class CamadaEnlaceDadosTransmissora {
   * @param quadro | bits recebidos
   * @return quadro 
   * ********************************************************* */
-  private static int[] CamadadeEnlaceTransmissoraControleDeErroCodigoDeHamming(int[] quadro) {
+  public static int[] CamadadeEnlaceTransmissoraControleDeErroCodigoDeHamming(int[] quadro) {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
     int totalDataBits = quadro.length * 32;
 

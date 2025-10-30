@@ -80,7 +80,7 @@ public class CamadaFisicaTransmissora {
                           FIM DO DEBUGGER
     ********************************************************* */
     this.ackRecebido = false;
-    new MeioDeComunicacao(fluxoBrutoDeBits);
+    new MeioDeComunicacao(fluxoBrutoDeBits, this);
     synchronized(ackLock) {
       if(ackRecebido == false) {
         try {
@@ -98,9 +98,33 @@ public class CamadaFisicaTransmissora {
       System.out.println(Thread.currentThread().getName());
     }
   } // Fim do metodo
-  /* *********************************************************
-      ATENCAO, ESSA PARTE EH SOMENTE PARA MOSTRAR NA GUI, NAO TEM VALOR FUNCIONAL
-  ********************************************************* */
+
+  /**************************************************************
+  * Metodo: receberAck (NOVO - Requisito 6)
+  * Funcao: Metodo de callback chamado pelo Meio quando um ACK
+  * chega para este transmissor.
+  * @param quadroAck | o quadro de ACK (8 bits)
+  * @return void 
+  * ********************************************************* */
+    public void receberAck(int[] quadroAck) {
+      FuncoesAuxiliares aux = new FuncoesAuxiliares();
+      int[] ackBitsEnquadrado = CamadaEnlaceDadosReceptora.CamadaDeEnlaceReceptoraEnquadramento(quadroAck);
+      int[] ackBitsControle = CamadaEnlaceDadosReceptora.CamadaDeEnlaceReceptoraControleDeErro(ackBitsEnquadrado);
+      int[] ackBitsFluxo = CamadaEnlaceDadosReceptora.CamadaDeEnlaceReceptoraControleDeFluxo(ackBitsControle);
+      int ackBitsPuro = aux.lerBits(ackBitsFluxo, 0, 8);
+      if (ackBitsPuro == 0b10101010) {
+          synchronized (ackLock) {
+              this.ackRecebido = true;
+              ackLock.notifyAll(); // Acorda a thread que esta esperando em enviarSubquadro
+          }
+          // --- FIM DA LOGICA DE TIMEOUT ---
+          System.out.println("ACK Recebido pela Thread: ");
+          System.out.println(Thread.currentThread().getName());
+
+      } else {
+        System.out.println("Quadro de resposta desconhecido recebido.");
+      }
+    }
   
   /**************************************************************
   * Metodo: CamadaFisicaTransmissoraCodificacaoBinaria
