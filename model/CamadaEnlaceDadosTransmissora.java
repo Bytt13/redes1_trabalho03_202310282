@@ -20,10 +20,22 @@ public class CamadaEnlaceDadosTransmissora {
   * @return void 
   * ********************************************************* */
   public CamadaEnlaceDadosTransmissora(int []quadro) {
-    int[] quadroEnquadrado = CamadaDeEnlaceTransmissoraEnquadramento(quadro);
-    int[] quadroControlado = CamadaDeEnlaceTransmissoraControleDeErro(quadroEnquadrado);
-    int[] quadroOrdenado = CamadaDeEnlaceTransmissoraControleDeFluxo(quadroControlado);
-    new CamadaFisicaTransmissora(quadroOrdenado);
+    for(int i = 0; i < quadro.length; i++) {
+      if(quadro[i] == 0) continue;
+      final int[] subquadroPayload = new int[] { quadro[i] };
+
+      StringBuilder threadName = new StringBuilder("Thread-Subquadro-");
+      threadName.append(i);
+
+      Thread threadSubquadro = new Thread(() -> {
+      int[] subQuadroEnquadrado = CamadaDeEnlaceTransmissoraEnquadramento(subquadroPayload);
+      int[] subQuadroControlado = CamadaDeEnlaceTransmissoraControleDeErro(subQuadroEnquadrado);
+      int[] subQuadroOrdenado = CamadaDeEnlaceTransmissoraControleDeFluxo(subQuadroControlado);
+      new CamadaFisicaTransmissora(subQuadroOrdenado);
+      }, threadName.toString());
+
+      threadSubquadro.start();
+    } // fim do for threads
   } //Fim do metodo
   /**************************************************************
   * Metodo: CamadaDeEnlaceTrasnmissoraEnquadramento

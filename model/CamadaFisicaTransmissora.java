@@ -1,8 +1,7 @@
-/***************************************************************** 
-* Autor............: Lucas de Menezes Chaves
+/***************************************************************** * Autor............: Lucas de Menezes Chaves
 * Matricula........: 202310282
 * Inicio...........: 19/08/2025
-* Ultima alteracao.: 29/08/2025
+* Ultima alteracao.: 30/10/2025
 * Nome.............: CamadaFisicaTransmissora
 * Funcao...........: Codifica os bits da mensagem recebida
 *************************************************************** */
@@ -13,6 +12,10 @@ import controller.TelaPrincipalController;
 import utils.FuncoesAuxiliares;
 
 public class CamadaFisicaTransmissora {
+
+  private final Object ackLock = new Object();
+  private static final int TIMEOUT_ACK_MS = 2000;
+  private volatile boolean ackRecebido;
 /**************************************************************
 * Metodo: CamadaFisicaTransmissora
 * Funcao: envia a mensagem (em bits) codificada para a proxima camada
@@ -25,9 +28,6 @@ public class CamadaFisicaTransmissora {
     int tipoDeCodificacao = auxiliar.numberCodification(controller.getCodificacao()); // codificacao escolhida
     
     int[] fluxoBrutoDeBits; // Fluxo de bits depois de serem codificados
-    for(int i  = 0; i < quadro.length; i++) {
-      controller.setTextAreaCodificada(auxiliar.binaryString(quadro[i]));
-    }
     // switch para codificar corretamente os bits
     switch (tipoDeCodificacao) {
       case 0:
@@ -48,21 +48,25 @@ public class CamadaFisicaTransmissora {
     /* *********************************************************
       ATENCAO, ESSA PARTE EH SOMENTE PARA MOSTRAR NA GUI, NAO TEM VALOR FUNCIONAL
     ********************************************************* */
-    StringBuilder sb = new StringBuilder();
-    for(int i = 0; i < fluxoBrutoDeBits.length; i++) {
-      sb.append(auxiliar.binaryString(fluxoBrutoDeBits[i]));
-      if (i < fluxoBrutoDeBits.length - 1) {
-        sb.append(" ");
-      }
-    }
-    controller.setTextAreaCodificada(sb.toString());
+      int totalDeBitsReais = auxiliar.descobrirTotalDeBitsReais(fluxoBrutoDeBits);
+      final String textoCodificado = auxiliar.arrayDeBitsParaString(fluxoBrutoDeBits, totalDeBitsReais);
+      final int[] bitsAnimacao = fluxoBrutoDeBits;
+      final int bitsParaAnimar = totalDeBitsReais; // A animacao deve usar o mesmo numero de bits
 
-    int totalDeBitsParaAnimar = quadro.length * 32;
-    // Se a codificacao dobra o numero de bits (Manchester por exemplo), a animacao tambem deve dobrar.
-    if (tipoDeCodificacao != 0) {
-        totalDeBitsParaAnimar *= 2;
-    }
-    auxiliar.animate(controller, fluxoBrutoDeBits, totalDeBitsParaAnimar);
+        // Atualiza a GUI na thread do JavaFX
+        javafx.application.Platform.runLater(() -> {
+        // Pega o texto atual e anexa o novo, para nao sobrescrever (Correcao da concorrencia)
+        String textoAtual = controller.getTextFieldCodificada();
+        StringBuilder sbGUI = new StringBuilder(textoAtual);
+        if (!textoAtual.isEmpty()) {
+            sbGUI.append("\n"); // Adiciona uma nova linha para separar os quadros
+        }
+        sbGUI.append(textoCodificado);
+        controller.setTextAreaCodificada(sbGUI.toString()); // Envia o texto acumulado
+
+        // Inicia a animacao deste subquadro
+        auxiliar.animate(controller, bitsAnimacao, bitsParaAnimar);
+    });
 
     /* *********************************************************
                         DEBUGGER DE SAIDA
@@ -75,8 +79,24 @@ public class CamadaFisicaTransmissora {
     /* *********************************************************
                           FIM DO DEBUGGER
     ********************************************************* */
-
+    this.ackRecebido = false;
     new MeioDeComunicacao(fluxoBrutoDeBits);
+    synchronized(ackLock) {
+      if(ackRecebido == false) {
+        try {
+          ackLock.wait(TIMEOUT_ACK_MS);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          System.out.println(Thread.currentThread().getName());
+          System.out.println("stopped");
+        }
+      }
+    }
+
+    if(ackRecebido == false) {
+      System.out.println("TIMEOUT: ACK nao recebido para ");
+      System.out.println(Thread.currentThread().getName());
+    }
   } // Fim do metodo
   /* *********************************************************
       ATENCAO, ESSA PARTE EH SOMENTE PARA MOSTRAR NA GUI, NAO TEM VALOR FUNCIONAL
@@ -102,7 +122,8 @@ public class CamadaFisicaTransmissora {
     TelaPrincipalController controller = TelaPrincipalController.getController();
     // if para verificar se precisamos usar a violacao de camada fisica
     if(controller.getEnquadramento().equals("Violacao da Camada Fisica")) {
-      return CamadaFisicaTransmissoraEnquadramentoViolacaoFisica(quadro);
+      // *** MUDANCA AQUI: Passa o 'tipoDeCodificacao' (1 = Manchester)
+      return CamadaFisicaTransmissoraEnquadramentoViolacaoFisica(quadro, 1);
     } // fim do if
     int bitsOriginais = quadro.length * 32; // cria um int com a quantidade de bits originais
     
@@ -155,7 +176,8 @@ public class CamadaFisicaTransmissora {
     TelaPrincipalController controller = TelaPrincipalController.getController();
     // if para verificar se precisamos usar a violacao de camada fisica
     if(controller.getEnquadramento().equals("Violacao da Camada Fisica")) {
-      return CamadaFisicaTransmissoraEnquadramentoViolacaoFisica(quadro);
+      // *** MUDANCA AQUI: Passa o 'tipoDeCodificacao' (2 = Manchester Diferencial)
+      return CamadaFisicaTransmissoraEnquadramentoViolacaoFisica(quadro, 2);
     } // fim do if
     int bitsOriginais = quadro.length * 32; // cria um int com a quantidade de bits originais
 
@@ -215,19 +237,23 @@ public class CamadaFisicaTransmissora {
   * Metodo: CamadaFisicaTransmissoraEnquadramentoViolacaoFisica
   * Funcao: Adiciona as flags de inicio e fim (1100) para o enquadramento de violacao da camada fisica.
   * @param quadro | quadro de bits original
+  * @param tipoDeCodificacao | 1 para Manchester, 2 para Diferencial
   * @return int[] | novo quadro com as flags
   * ********************************************************* */
-  private int[] CamadaFisicaTransmissoraEnquadramentoViolacaoFisica(int[] quadro) {
-    TelaPrincipalController controller = TelaPrincipalController.getController();
+  // *** MUDANCA AQUI: Assinatura do metodo
+  private int[] CamadaFisicaTransmissoraEnquadramentoViolacaoFisica(int[] quadro, int tipoDeCodificacao) {
+    // *** MUDANCA AQUI: Removemos a logica que pega o controller e descobre a codificacao
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
-    String cod = controller.getCodificacao();
-    int tipoDeCodificacao = auxiliar.numberCodification(cod);
-    final int VIOLACAO = 0b1100;
+    
+    final int VIOLACAO = 0b1111;
     final int TAMANHO_VIOLACAO_BITS = 4;
 
     final int TAMANHO_SUBQUADRO_EM_BITS = 32; // a cada 32 bits adiciona uma flag
 
-    int totalBitsMensagem = quadro.length * 32;
+    // Isso garante que estamos codificando apenas os bits da mensagem,
+    // e nao o "padding" (zeros extras) do final do array.
+    int totalBitsMensagem = auxiliar.descobrirTotalDeBitsReais(quadro);
+    
     if (totalBitsMensagem == 0)
       return new int[0]; // se a mensagem ta vazia nem finaliza o processamento
 
@@ -280,6 +306,10 @@ public class CamadaFisicaTransmissora {
         bitEscritaGlobal += TAMANHO_VIOLACAO_BITS;
         // Zera o contador para o proximo subquadro
         contadorBitsSubquadro = 0;
+        
+        // Isso garante que o proximo subquadro comece com o nivel (estado)
+        // esperado, sincronizando com o receptor.
+        nivelAtual = 1; 
       } // fim do if 
 
     } // fim do for
@@ -293,6 +323,6 @@ public class CamadaFisicaTransmissora {
       int bit = auxiliar.lerBits(bufferTemporario, i, 1);
       auxiliar.escreverBits(fluxoBrutoDeBitsFinal, i, bit, 1);
     } // fim do for
-    return fluxoBrutoDeBitsFinal; // retorna o array 
+    return fluxoBrutoDeBitsFinal; // retorna o array
   }// fim do metodo
 } // Fim da classe

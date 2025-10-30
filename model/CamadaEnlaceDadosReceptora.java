@@ -1,5 +1,4 @@
-/***************************************************************** 
-* Autor..............: Lucas de Menezes Chaves
+/***************************************************************** * Autor..............: Lucas de Menezes Chaves
 * Matricula........: 202310282
 * Inicio...........: 16/09/2025
 * Ultima alteracao.: 27/09/2025
@@ -108,7 +107,7 @@ public class CamadaEnlaceDadosReceptora {
   * @return quadroDesenquadrado
   * ********************************************************* */
   private static int[] CamadaDeEnlaceReceptoraEnquadramentoContagemDeCaracteres(int[] quadro) {
-FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
+    FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
     TelaPrincipalController controller = TelaPrincipalController.getController();
     String mensagemOriginal = controller.getMensagemOriginal();
 
@@ -179,14 +178,23 @@ FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
 
     // Primeira Passada: Calcula o tamanho exato da carga util para criar um array do tamanho correto
     int tamanhoCargaUtil = 0;
+    // *** INICIO DA CORRECAO ***
+    boolean frameIniciado = false;
     for (int i = 0; i < totalBytes; i++) {
         int byteAtual = bytesRecebidos[i];
         if (byteAtual == 0) continue; // Ignora bytes nulos (padding)
 
-        // Se o byte for uma FLAG, simplesmente o ignora.
         if (byteAtual == FLAG) {
-            continue;
+            if (frameIniciado) {
+                break; // Encontrou a flag final, para de contar
+            } else {
+                frameIniciado = true; // Encontrou a flag inicial
+                continue; // Pula a flag inicial
+            }
         }
+        
+        if (!frameIniciado) continue; // Ignora lixo antes da flag inicial
+        // *** FIM DA CORRECAO ***
 
         // Se for um ESCAPE, o proximo byte eh o de dados.
         if (byteAtual == ESC) {
@@ -198,14 +206,25 @@ FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
     // Segunda Passada: Cria o array final e o preenche com os dados corretos
     int[] cargaUtil = new int[tamanhoCargaUtil];
     int indiceCargaUtil = 0;
+    // *** INICIO DA CORRECAO ***
+    frameIniciado = false; // Reseta o estado
     // for para percorrer tudo
     for (int i = 0; i < totalBytes && indiceCargaUtil < tamanhoCargaUtil; i++) {
         int byteAtual = bytesRecebidos[i];
         if (byteAtual == 0) continue;
-        // if para verificar se eh uma flag
+
         if (byteAtual == FLAG) {
-            continue;
+            if (frameIniciado) {
+                break; // Encontrou a flag final, para de preencher
+            } else {
+                frameIniciado = true; // Encontrou a flag inicial
+                continue; // Pula a flag inicial
+            }
         }
+        
+        if (!frameIniciado) continue; // Ignora lixo antes da flag inicial
+        // *** FIM DA CORRECAO ***
+
         // if para verificar se eh um esc
         if (byteAtual == ESC) {
             i++; // Pula o byte de escape
@@ -263,9 +282,11 @@ FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
           if(ponteiroLeitura + 8 <= tamanhoTotalBitsRecebidos) {
               int possivelFlag = auxiliar.lerBits(quadro, ponteiroLeitura, 8);
               if (possivelFlag == FLAG) {
-                  ponteiroLeitura += 8; // Pula a flag
-                  contadorDeUns = 0;    // Reseta o contador para o proximo sub-quadro
-                  continue;             // Volta ao inicio do loop
+                  // *** INICIO DA CORRECAO ***
+                  // A FLAG inicial ja foi pulada (ponteiroLeitura = 8).
+                  // Qualquer outra flag encontrada eh a FLAG FINAL.
+                  break; // Para o loop, ignorando o padding.
+                  // *** FIM DA CORRECAO ***
               }
           }
           
@@ -329,15 +350,16 @@ FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
     System.out.println(contadorDeUns);
 
     // 7. se contador de um % 2 != 0 (impar, indica erro)
-    if (contadorDeUns % 2 != 0) {
+    if (contadorDeUns % 2 != 0) { 
       // 9. alerta(houve um erro de paridade)
-      Alert alert = new Alert(AlertType.ERROR);
-      alert.setTitle("Erro de Transmissão");
-      alert.setHeaderText("Erro de Paridade Detectado");
-      alert.setContentText("Um erro foi detectado nos dados recebidos! O controle de paridade par falhou (a contagem de bits '1' é ímpar).");
-      
-      // Eh melhor usar show() se a simulacao precisar continuar rodando
-      alert.show(); 
+      javafx.application.Platform.runLater(() -> {
+        Alert alert = new Alert(AlertType.ERROR);
+        alert.setTitle("Erro de Transmissão");
+        alert.setHeaderText("Erro de Paridade Detectado");
+        alert.setContentText("Um erro foi detectado nos dados recebidos! O controle de paridade par falhou (a contagem de bits '1' é ímpar).");
+        
+        alert.show();
+      });
     }
     // 8. nao houve erro (Nao faz nada, conforme solicitado)
     // 10. fim do se
@@ -401,14 +423,14 @@ FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
     // 7. se contador de um % 2 == 0 (par, indica erro)
     if (contadorDeUns % 2 == 0) {
       // 9. alerta(houve um erro de paridade)
-      Alert alert = new Alert(AlertType.ERROR);
-      alert.setTitle("Erro de Transmissão");
-      alert.setHeaderText("Erro de Paridade Detectado");
-      alert.setContentText("Um erro foi detectado nos dados recebidos! O controle de paridade impar falhou (a contagem de bits '1' é par).");
-      
-      // showAndWait() trava a execucao ate o usuario fechar o alerta
-      // Eh melhor usar show() se a simulacao precisar continuar rodando
-      alert.show(); 
+      javafx.application.Platform.runLater(() -> {
+        Alert alert = new Alert(AlertType.ERROR);
+        alert.setTitle("Erro de Transmissão");
+        alert.setHeaderText("Erro de Paridade Detectado");
+        alert.setContentText("Um erro foi detectado nos dados recebidos! O controle de paridade impar falhou (a contagem de bits '1' é par).");
+        
+        alert.show();
+      });
     }
     // 8. nao houve erro (Nao faz nada, conforme solicitado)
     // 10. fim do se
@@ -498,18 +520,20 @@ FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
     int crcRecebido = auxiliar.lerBits(quadro, totalBitsDeDados, 32);
 
     if (crcCalculado != crcRecebido) {
-        Alert alert = new Alert(AlertType.ERROR);
-        alert.setTitle("Erro de Transmissão");
-        alert.setHeaderText("Erro de CRC Detectado");
-        
-        // Correcao para StringBuilder
-        StringBuilder sb = new StringBuilder();
-        sb.append("Um erro foi detectado nos dados recebidos! O CRC falhou.\n");
-        sb.append("Calculado: 0x").append(Integer.toHexString(crcCalculado).toUpperCase()).append("\n");
-        sb.append("Recebido:  0x").append(Integer.toHexString(crcRecebido).toUpperCase());
-        
-        alert.setContentText(sb.toString());
-        alert.show(); 
+        javafx.application.Platform.runLater(() -> {
+          Alert alert = new Alert(AlertType.ERROR);
+          alert.setTitle("Erro de Transmissão");
+          alert.setHeaderText("Erro de CRC Detectado");
+          
+          // Correcao para StringBuilder
+          StringBuilder sb = new StringBuilder();
+          sb.append("Um erro foi detectado nos dados recebidos! O CRC falhou.\n");
+          sb.append("Calculado: 0x").append(Integer.toHexString(crcCalculado).toUpperCase()).append("\n");
+          sb.append("Recebido:  0x").append(Integer.toHexString(crcRecebido).toUpperCase());
+          
+          alert.setContentText(sb.toString());
+          alert.show();
+        });
     }
 
     // 4. Remover o CRC e retornar apenas os dados
@@ -573,17 +597,20 @@ FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
 
     // 3) Analisar a sindrome
     if (syndrome != 0) {
-      Alert alert = new Alert(AlertType.ERROR);
-      alert.setTitle("Erro de Transmissão");
-      alert.setHeaderText("Erro de Hamming Detectado!");
+      final int syndromeFinal = syndrome;
+      javafx.application.Platform.runLater(() -> {
+        Alert alert = new Alert(AlertType.ERROR);
+        alert.setTitle("Erro de Transmissão");
+        alert.setHeaderText("Erro de Hamming Detectado!");
 
-      StringBuilder sb = new StringBuilder();
-      sb.append("Um erro foi detectado nos dados recebidos!\n");
-      sb.append("A verificação de Hamming falhou.\n");
-      sb.append("Posição do erro (Síndrome): ").append(syndrome);
-      
-      alert.setContentText(sb.toString());
-      alert.show();
+        StringBuilder sb = new StringBuilder();
+        sb.append("Um erro foi detectado nos dados recebidos!\n");
+        sb.append("A verificação de Hamming falhou.\n");
+        sb.append("Posição do erro (Síndrome): ").append(syndromeFinal);
+        
+        alert.setContentText(sb.toString());
+        alert.show();
+      });
       // NOTA: O exercicio nao pede correcao, apenas deteccao.
       // Se pedisse, poderiamos inverter o bit na 'posicao - 1' (syndrome - 1)
     }

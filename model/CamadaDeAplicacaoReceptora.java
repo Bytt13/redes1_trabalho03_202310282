@@ -22,15 +22,21 @@ public class CamadaDeAplicacaoReceptora {
     public CamadaDeAplicacaoReceptora(int[] quadro) {
       FuncoesAuxiliares auxiliar = new FuncoesAuxiliares(); // cria o objeto para podermos usar as funcoes auxiliares
       TelaPrincipalController controller = TelaPrincipalController.getController();
-      String mensagemOriginal = controller.getMensagemOriginal();
       int totalBits = quadro.length * 32;
-      // Calcula o numero de bits exatos da mensagem original
-      // Usa a funcao para obter a string binaria
-      String bitsDecodificados = auxiliar.arrayDeBitsParaString(quadro, totalBits);
-      controller.setTextAreaDecodificada(bitsDecodificados);
+      if(totalBits == 0 && quadro.length > 0) totalBits = 32;
+      final String bitsDecodificados = auxiliar.arrayDeBitsParaString(quadro, totalBits);
+      javafx.application.Platform.runLater(() -> {
+        String textoAtual = controller.getTextAreaDecodificada();
+        StringBuilder sb = new StringBuilder(textoAtual);
+        if (!textoAtual.isEmpty()) {
+            sb.append("\n"); // Adiciona uma nova linha para separar os quadros
+        }
+        sb.append(bitsDecodificados);
+        controller.setTextAreaDecodificada(sb.toString()); 
+      });
 
       // Transformando os binarios em texto
-      String mensagem = auxiliar.binaryArrayToString(quadro, mensagemOriginal.length());
+      String mensagem = auxiliar.binaryArrayToString(quadro, quadro.length * 4);
       // chama a proxima camada
       new AplicacaoReceptora(mensagem);
     } // fim do metodo

@@ -2,7 +2,7 @@
 * Autor..............: Lucas de Menezes Chaves
 * Matricula........: 202310282
 * Inicio...........: 21/08/2025
-* Ultima alteracao.: 29/08/2025
+* Ultima alteracao.: 30/10/2025
 * Nome.............: CamadaFisicaReceptora
 * Funcao...........: Transfere a mensagem decodificada para camada aplicacao receptora
 *************************************************************** */
@@ -79,7 +79,8 @@ public class CamadaFisicaReceptora {
     TelaPrincipalController controller = TelaPrincipalController.getController();
     //if para verificar se foi violacao da camada fisica
     if(controller.getEnquadramento().equals("Violacao da Camada Fisica")) {
-      return CamadaFisicaReceptoraDesenquadramentoViolacaoFisica(quadro);
+      // *** MUDANCA AQUI: Passa o 'tipoDeCodificacao' (1 = Manchester)
+      return CamadaFisicaReceptoraDesenquadramentoViolacaoFisica(quadro, 1);
     } // fim do if
     
     int bitsCodificados = quadro.length * 32;
@@ -122,7 +123,8 @@ public class CamadaFisicaReceptora {
     TelaPrincipalController controller = TelaPrincipalController.getController();
     //if para verificar se foi violacao da camada fisica
     if(controller.getEnquadramento().equals("Violacao da Camada Fisica")) {
-      return CamadaFisicaReceptoraDesenquadramentoViolacaoFisica(quadro);
+      // *** MUDANCA AQUI: Passa o 'tipoDeCodificacao' (2 = Manchester Diferencial)
+      return CamadaFisicaReceptoraDesenquadramentoViolacaoFisica(quadro, 2);
     } // fim do if
 
     int bitsCodificados = quadro.length * 32;
@@ -178,17 +180,22 @@ public class CamadaFisicaReceptora {
   * Metodo: CamadaFisicaReceptoraDesenquadramentoViolacaoFisica
   * Funcao: Remove as flags de inicio e fim (1100) do enquadramento de violacao da camada fisica.
   * @param quadro | quadro de bits com as flags
+  * @param tipoDeDecodificacao | 1 para Manchester, 2 para Diferencial
   * @return int[] | novo quadro sem as flags
   * ********************************************************* */
-  private int[] CamadaFisicaReceptoraDesenquadramentoViolacaoFisica(int[] quadro) {
-    TelaPrincipalController controller = TelaPrincipalController.getController();
+  // *** MUDANCA AQUI: Assinatura do metodo
+  private int[] CamadaFisicaReceptoraDesenquadramentoViolacaoFisica(int[] quadro, int tipoDeDecodificacao) {
+    // *** MUDANCA AQUI: Removemos a logica que pega o controller e descobre a decodificacao
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
-    String cod = controller.getCodificacao();
-    int tipoDeDecodificacao = auxiliar.numberCodification(cod);
-    final int VIOLACAO = 0b1100;
+
+    final int VIOLACAO = 0b1111;
     final int TAMANHO_VIOLACAO_BITS = 4;
 
-    int totalBitsSinal = quadro.length * 32;
+    // <<< CORRECAO 1: Usar 'descobrirTotalDeBitsReais'
+    // Precisamos saber o tamanho real do *sinal* recebido,
+    // para nao tentar ler o "padding" do array.
+    int totalBitsSinal = auxiliar.descobrirTotalDeBitsReais(quadro);
+    
     if (totalBitsSinal == 0)
       return new int[0];
 
@@ -208,6 +215,12 @@ public class CamadaFisicaReceptora {
         if (possivelViolacao == VIOLACAO) {
           quadroIniciado = true; // marca que o processamento de dados pode comecar
           i += TAMANHO_VIOLACAO_BITS; // pula os 4 bits da violacao
+          
+          // <<< CORRECAO 2: Resetar o nivel do Manchester Diferencial
+          // Sincroniza o receptor com o transmissor toda vez que uma
+          // flag eh detectada.
+          nivelAnterior = 1; 
+          
           continue; // volta ao inicio do loo
         } // fim do if
       } // fim do if
@@ -226,10 +239,14 @@ public class CamadaFisicaReceptora {
       if (tipoDeDecodificacao == 1) { // Manchester
         if (bit1 == 1 && bit2 == 0) { // 10->1
           bitOriginal = 1;
+        } else {
+          bitOriginal = 0; // 01->0
         }
       } else { // Manchester Diferencial
         if (bit1 == nivelAnterior) { // sem transicao -> 1
           bitOriginal = 1;
+        } else {
+          bitOriginal = 0; // com transicao -> 0
         }
         nivelAnterior = bit2; // atualiza o nivel para a proxima comparacao
       }

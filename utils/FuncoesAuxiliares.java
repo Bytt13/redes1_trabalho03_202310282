@@ -40,6 +40,13 @@ public class FuncoesAuxiliares {
     for (int i = 0; i < comprimentoOriginal; i++) {
       // Usa a funcao que ja tinhamos para pegar um caractere especifico
       char caractere = getCharFromString(frotaDeBits, i);
+      
+      // Se encontramos o caractere nulo, ele é o padding (preenchimento).
+      // Paramos de ler para nao adicionar lixo na string final.
+      if (caractere == '\0') {
+          break;
+      }
+
       // Adiciona o caractere recuperado a nossa nova string
       palavraDesmontada.append(caractere);
     }

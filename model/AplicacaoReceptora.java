@@ -20,7 +20,18 @@ public class AplicacaoReceptora {
  * ********************************************************* */
   public AplicacaoReceptora(String mensagem) {
     TelaPrincipalController controller = TelaPrincipalController.getController(); // pega o controller que vamos usar para mostrar a mensagem
-    controller.setTextAreaMensagemFinal(mensagem); // mostra a mensagem na caixa de texto da GUI
-    // if para comparar as mensagens e emitir o alerta
+    javafx.application.Platform.runLater(() -> {
+      // Pega o texto que ja estava la (usando o novo getter do Passo 1)
+      String textoAtual = controller.getTextAreaMensagemFinal();
+      
+      // Concatena a nova parte da mensagem
+      StringBuilder sb = new StringBuilder(textoAtual);
+      
+      // Anexa a nova parte da mensagem
+      sb.append(mensagem);
+      
+      // Define o texto completo de volta na GUI
+      controller.setTextAreaMensagemFinal(sb.toString());
+    });
   }// Fim do metodo
 } // Fim da classe
