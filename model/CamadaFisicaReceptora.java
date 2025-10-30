@@ -13,13 +13,15 @@ import utils.FuncoesAuxiliares;
 //imports que precisamos
 
 public class CamadaFisicaReceptora {
+  public CamadaFisicaTransmissora transmissor;
 /**************************************************************
 * Metodo: CamadaFisicaReceptora
 * Funcao: decodifica os bits e passa eles para camada seguinte
 * @param quadro | bits recebidos
 * @return void 
 * ********************************************************* */
-  public CamadaFisicaReceptora(int[] quadro) {
+  public CamadaFisicaReceptora(int[] quadro, CamadaFisicaTransmissora transmissor) {
+    this.transmissor = transmissor;
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares(); // Cria um objeto para usarmos as funcoes auxiliares
     TelaPrincipalController controller = TelaPrincipalController.getController(); // pega o controller para podermos usar
 
@@ -56,7 +58,7 @@ public class CamadaFisicaReceptora {
                           FIM DO DEBUGGER
     ********************************************************* */
     // Chama a proxima camada
-    new CamadaEnlaceDadosReceptora(fluxoBrutoDeBits);
+    new CamadaEnlaceDadosReceptora(fluxoBrutoDeBits, transmissor);
   } // Fim do metodo
 
   /**************************************************************
@@ -65,7 +67,7 @@ public class CamadaFisicaReceptora {
   * @param  quadro | mensagem recebida (em bits)
   * @return a mensagem eh igual aos bits em binario 
   * ********************************************************* */
-  private int[] CamadaFisicaReceptoraDecodificacaoBinaria(int[] quadro) {
+  public static int[] CamadaFisicaReceptoraDecodificacaoBinaria(int[] quadro) {
     return quadro; // Em binario, os bits ja estao na forma final
   } // Fim do metodo
 
@@ -75,7 +77,7 @@ public class CamadaFisicaReceptora {
   * @param quadro | mensagem recebida (em bits)
   * @return a mensagem decodificada em manchester
   * ********************************************************* */
-  private int[] CamadaFisicaReceptoraDecodificacaoManchester(int[] quadro) {
+  public static int[] CamadaFisicaReceptoraDecodificacaoManchester(int[] quadro) {
     TelaPrincipalController controller = TelaPrincipalController.getController();
     //if para verificar se foi violacao da camada fisica
     if(controller.getEnquadramento().equals("Violacao da Camada Fisica")) {
@@ -119,7 +121,7 @@ public class CamadaFisicaReceptora {
   * @param quadro | mensagem recebida (em bits)
   * @return a mensagem decodificada em mancheser diferencial
   * ********************************************************* */
-  private int[] CamadaFisicaReceptoraDecodificacaoManchesterDiferencial(int[] quadro) {
+  public static int[] CamadaFisicaReceptoraDecodificacaoManchesterDiferencial(int[] quadro) {
     TelaPrincipalController controller = TelaPrincipalController.getController();
     //if para verificar se foi violacao da camada fisica
     if(controller.getEnquadramento().equals("Violacao da Camada Fisica")) {
@@ -184,7 +186,7 @@ public class CamadaFisicaReceptora {
   * @return int[] | novo quadro sem as flags
   * ********************************************************* */
   // *** MUDANCA AQUI: Assinatura do metodo
-  private int[] CamadaFisicaReceptoraDesenquadramentoViolacaoFisica(int[] quadro, int tipoDeDecodificacao) {
+  public static int[] CamadaFisicaReceptoraDesenquadramentoViolacaoFisica(int[] quadro, int tipoDeDecodificacao) {
     // *** MUDANCA AQUI: Removemos a logica que pega o controller e descobre a decodificacao
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
 

@@ -13,9 +13,9 @@ import utils.FuncoesAuxiliares;
 
 public class CamadaFisicaTransmissora {
 
-  private final Object ackLock = new Object();
-  private static final int TIMEOUT_ACK_MS = 2000;
-  private volatile boolean ackRecebido;
+  public final Object ackLock = new Object();
+  public static final int TIMEOUT_ACK_MS = 2000;
+  public volatile boolean ackRecebido;
 /**************************************************************
 * Metodo: CamadaFisicaTransmissora
 * Funcao: envia a mensagem (em bits) codificada para a proxima camada
@@ -108,10 +108,30 @@ public class CamadaFisicaTransmissora {
   * ********************************************************* */
     public void receberAck(int[] quadroAck) {
       FuncoesAuxiliares aux = new FuncoesAuxiliares();
+      TelaPrincipalController controller = TelaPrincipalController.getController();
       int[] ackBitsEnquadrado = CamadaEnlaceDadosReceptora.CamadaDeEnlaceReceptoraEnquadramento(quadroAck);
-      int[] ackBitsControle = CamadaEnlaceDadosReceptora.CamadaDeEnlaceReceptoraControleDeErro(ackBitsEnquadrado);
+      int[] ackBitsControle = CamadaEnlaceDadosReceptora.CamadaDeEnlaceReceptoraControleDeErro(ackBitsEnquadrado, null);
       int[] ackBitsFluxo = CamadaEnlaceDadosReceptora.CamadaDeEnlaceReceptoraControleDeFluxo(ackBitsControle);
-      int ackBitsPuro = aux.lerBits(ackBitsFluxo, 0, 8);
+      int tipoDeCodificacao = aux.numberCodification(controller.getCodificacao()); // pega a codificacao escolhida e transforma em int
+      int[] fluxoBrutoDeBits; // Cria o fluxo de bits que vamos passar adiante
+      switch(tipoDeCodificacao) {
+        case 0:
+          fluxoBrutoDeBits = CamadaFisicaReceptora.CamadaFisicaReceptoraDecodificacaoBinaria(ackBitsFluxo);
+          break; 
+        case 1:
+          fluxoBrutoDeBits = CamadaFisicaReceptora.CamadaFisicaReceptoraDecodificacaoManchester(ackBitsFluxo);
+          break;
+        case 2: 
+          fluxoBrutoDeBits = CamadaFisicaReceptora.CamadaFisicaReceptoraDecodificacaoManchesterDiferencial(ackBitsFluxo);
+          break;
+        default:
+          fluxoBrutoDeBits = CamadaFisicaReceptora.CamadaFisicaReceptoraDecodificacaoBinaria(ackBitsFluxo);
+          break;
+      } // Fim do switch
+
+      // Switch para escolher qual decodificacao usar no quadro ja desenquadrado
+      
+      int ackBitsPuro = aux.lerBits(fluxoBrutoDeBits, 0, 8);
       if (ackBitsPuro == 0b10101010) {
           synchronized (ackLock) {
               this.ackRecebido = true;
@@ -132,7 +152,7 @@ public class CamadaFisicaTransmissora {
   * @param quadro | mensagem recebida (em bits)
   * @return a mensagem eh igual aos bits em binario 
   * ********************************************************* */
-  private int[] CamadaFisicaTransmissoraCodificacaoBinaria(int[] quadro) {
+  public static int[] CamadaFisicaTransmissoraCodificacaoBinaria(int[] quadro) {
     return quadro; // Em binario ja eh igual aos bits
   } // Fim do metodo
 
@@ -142,7 +162,7 @@ public class CamadaFisicaTransmissora {
   * @param quadro | mensagem recebida (em bits)
   * @return a mensagem codificada em manchester
   * ********************************************************* */
-  private int[] CamadaFisicaTransmissoraCodificacaoManchester(int[] quadro) {
+  public static int[] CamadaFisicaTransmissoraCodificacaoManchester(int[] quadro) {
     TelaPrincipalController controller = TelaPrincipalController.getController();
     // if para verificar se precisamos usar a violacao de camada fisica
     if(controller.getEnquadramento().equals("Violacao da Camada Fisica")) {
@@ -196,7 +216,7 @@ public class CamadaFisicaTransmissora {
   * @param  quadro | mensagem recebida (em bits)
   * @return a mensagem codificada em manchester diferencial 
   * ********************************************************* */
-  private int[] CamadaFisicaTransmissoraCodificacaoManchesterDiferencial(int[] quadro) {
+  public static int[] CamadaFisicaTransmissoraCodificacaoManchesterDiferencial(int[] quadro) {
     TelaPrincipalController controller = TelaPrincipalController.getController();
     // if para verificar se precisamos usar a violacao de camada fisica
     if(controller.getEnquadramento().equals("Violacao da Camada Fisica")) {
@@ -265,7 +285,7 @@ public class CamadaFisicaTransmissora {
   * @return int[] | novo quadro com as flags
   * ********************************************************* */
   // *** MUDANCA AQUI: Assinatura do metodo
-  private int[] CamadaFisicaTransmissoraEnquadramentoViolacaoFisica(int[] quadro, int tipoDeCodificacao) {
+  public static int[] CamadaFisicaTransmissoraEnquadramentoViolacaoFisica(int[] quadro, int tipoDeCodificacao) {
     // *** MUDANCA AQUI: Removemos a logica que pega o controller e descobre a codificacao
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
     

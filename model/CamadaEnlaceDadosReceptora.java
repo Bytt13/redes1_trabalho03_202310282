@@ -13,16 +13,17 @@ import javafx.scene.control.Alert.AlertType;
 import utils.FuncoesAuxiliares;
 
 public class CamadaEnlaceDadosReceptora {
+  public CamadaFisicaTransmissora transmissor;
   /**************************************************************
   * Metodo: CamadaEnlaceDadosReceptora
   * Funcao: desenquadra os bits e passa eles para camada seguinte
   * @param quadro | bits recebidos
   * @return void 
   * ********************************************************* */
-  public CamadaEnlaceDadosReceptora(int[] quadro) {
-
+  public CamadaEnlaceDadosReceptora(int[] quadro, CamadaFisicaTransmissora transmissor) {
+    this.transmissor = transmissor;
     int[] quadroOrdenado = CamadaDeEnlaceReceptoraControleDeFluxo(quadro);
-    int[] quadroControlado = CamadaDeEnlaceReceptoraControleDeErro(quadroOrdenado);
+    int[] quadroControlado = CamadaDeEnlaceReceptoraControleDeErro(quadroOrdenado, transmissor);
     int[] quadroDesenquadrado = CamadaDeEnlaceReceptoraEnquadramento(quadroControlado);
 
     new CamadaDeAplicacaoReceptora(quadroDesenquadrado);
@@ -65,7 +66,7 @@ public class CamadaEnlaceDadosReceptora {
   * @param quadro | bits recebidos
   * @return void 
   * ********************************************************* */
-  public static int[] CamadaDeEnlaceReceptoraControleDeErro(int[] quadro) {
+  public static int[] CamadaDeEnlaceReceptoraControleDeErro(int[] quadro, CamadaFisicaTransmissora transmissor) {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
     TelaPrincipalController controller = TelaPrincipalController.getController();
     int tipoDeControle = auxiliar.controlCodification(controller.getControleErro()); // pega o controle de erro escolhido
@@ -73,19 +74,19 @@ public class CamadaEnlaceDadosReceptora {
     //switch para pegar o controle de erro 
     switch(tipoDeControle) {
       case 0: //bit de paridade par
-        quadroControlado = CamadadeEnlaceReceptoraControleDeErroBitParidadePar(quadro);
+        quadroControlado = CamadadeEnlaceReceptoraControleDeErroBitParidadePar(quadro, transmissor);
         break;
       case 1: //bit de paridade impar
-        quadroControlado = CamadadeEnlaceReceptoraControleDeErroBitParidadeImpar(quadro);
+        quadroControlado = CamadadeEnlaceReceptoraControleDeErroBitParidadeImpar(quadro, transmissor);
         break;
       case 2: //CRC
-        quadroControlado = CamadadeEnlaceReceptoraControleDeErroCRC(quadro);
+        quadroControlado = CamadadeEnlaceReceptoraControleDeErroCRC(quadro, transmissor);
         break;
       case 3: //codigo de hamming
-        quadroControlado = CamadadeEnlaceReceptoraControleDeErroCodigoDeHamming(quadro);
+        quadroControlado = CamadadeEnlaceReceptoraControleDeErroCodigoDeHamming(quadro, transmissor);
         break;
       default:
-        quadroControlado = CamadadeEnlaceReceptoraControleDeErroBitParidadePar(quadro);
+        quadroControlado = CamadadeEnlaceReceptoraControleDeErroBitParidadePar(quadro, transmissor);
         break;
     } // Fim do switch
 
@@ -325,7 +326,7 @@ public class CamadaEnlaceDadosReceptora {
   * @param quadro | bits recebidos
   * @return quadro 
   * ********************************************************* */
-  public static int[] CamadadeEnlaceReceptoraControleDeErroBitParidadePar(int[] quadro) {
+  public static int[] CamadadeEnlaceReceptoraControleDeErroBitParidadePar(int[] quadro, CamadaFisicaTransmissora transmissor) {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
 
     // Descobre o tamanho total de bits, incluindo o bit de paridade
@@ -360,6 +361,8 @@ public class CamadaEnlaceDadosReceptora {
         
         alert.show();
       });
+    } else {
+      enviarAck(transmissor);
     }
     // 8. nao houve erro (Nao faz nada, conforme solicitado)
     // 10. fim do se
@@ -396,7 +399,7 @@ public class CamadaEnlaceDadosReceptora {
   * @param quadro | bits recebidos
   * @return quadro 
   * ********************************************************* */
-  public static int[] CamadadeEnlaceReceptoraControleDeErroBitParidadeImpar(int[] quadro) {
+  public static int[] CamadadeEnlaceReceptoraControleDeErroBitParidadeImpar(int[] quadro, CamadaFisicaTransmissora transmissor) {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
 
     // Descobre o tamanho total de bits, incluindo o bit de paridade
@@ -467,7 +470,7 @@ public class CamadaEnlaceDadosReceptora {
   * @param quadro | bits recebidos
   * @return quadro 
   * ********************************************************* */
-  public static int[] CamadadeEnlaceReceptoraControleDeErroCRC(int[] quadro) {
+  public static int[] CamadadeEnlaceReceptoraControleDeErroCRC(int[] quadro, CamadaFisicaTransmissora transmissor) {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
     
     // Descobre o tamanho total de bits, incluindo o bit de paridade
@@ -558,7 +561,7 @@ public class CamadaEnlaceDadosReceptora {
   * @param quadro | bits recebidos
   * @return quadro 
   * ********************************************************* */
-  public static int[] CamadadeEnlaceReceptoraControleDeErroCodigoDeHamming(int[] quadro) {
+  public static int[] CamadadeEnlaceReceptoraControleDeErroCodigoDeHamming(int[] quadro, CamadaFisicaTransmissora transmissor) {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
     int N = quadro.length * 32; // N = tamanho total do quadro recebido
 
@@ -639,4 +642,42 @@ public class CamadaEnlaceDadosReceptora {
 
     return quadroControlado;
   } // fim do metodo
+    /**************************************************************
+  * Metodo: enviarAck (NOVO)
+  * Funcao: Rota de retorno para o ACK. Chamado pelo receptor.
+  * @param ackQuadro | O quadro de ACK
+  * @return void 
+  * ********************************************************* */
+  public static void enviarAck(CamadaFisicaTransmissora transmissor) {
+    FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
+    TelaPrincipalController controller = TelaPrincipalController.getController();
+    // Simula o retorno do ACK (sem erros)
+    int[] ackQuadro = new int[1]; // 1 int eh suficiente para 8 bits
+    int ackBits = 0b10101010; // Padrao de ACK fixo
+    auxiliar.escreverBits(ackQuadro, 0, ackBits, 8);
+    int[] quadroAckEnquadrado = CamadaEnlaceDadosTransmissora.CamadaDeEnlaceTransmissoraEnquadramento(ackQuadro);
+    int[] quadroAckControlado = CamadaEnlaceDadosTransmissora.CamadaDeEnlaceTransmissoraControleDeErro(quadroAckEnquadrado);
+    int[] quadroAckOrdenado = CamadaEnlaceDadosTransmissora.CamadaDeEnlaceTransmissoraControleDeFluxo(quadroAckControlado);
+    int tipoDeCodificacao = auxiliar.numberCodification(controller.getCodificacao()); // codificacao escolhida
+    int[] fluxoBrutoDeBits; // Fluxo de bits depois de serem codificados
+    switch (tipoDeCodificacao) {
+      case 0:
+        fluxoBrutoDeBits = CamadaFisicaTransmissora.CamadaFisicaTransmissoraCodificacaoBinaria(quadroAckOrdenado); // Codificacao binaria
+        break;
+      case 1:
+        fluxoBrutoDeBits = CamadaFisicaTransmissora.CamadaFisicaTransmissoraCodificacaoManchester(quadroAckOrdenado); // codificacao manchester
+        break;
+      case 2:
+        fluxoBrutoDeBits = CamadaFisicaTransmissora.CamadaFisicaTransmissoraCodificacaoManchesterDiferencial(quadroAckOrdenado); //codificacao manchester diferencial
+        break;
+      default:
+        fluxoBrutoDeBits = CamadaFisicaTransmissora.CamadaFisicaTransmissoraCodificacaoBinaria(quadroAckOrdenado); //Binario por padrao
+        break;
+    } // Fim do switch
+    // switch para codificar corretamente os bits
+    
+    if (transmissor != null) {
+      MeioDeComunicacao.transferirAck(fluxoBrutoDeBits, transmissor);
+    }
+  } // Fim do metodo enviarAck
 } // Fim da classe
