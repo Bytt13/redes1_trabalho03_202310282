@@ -106,10 +106,8 @@ public class CamadaFisicaTransmissora {
   * @return void 
   * ********************************************************* */
     public void receberAck(int[] quadroAck) {
-FuncoesAuxiliares aux = new FuncoesAuxiliares();
+      FuncoesAuxiliares aux = new FuncoesAuxiliares();
       TelaPrincipalController controller = TelaPrincipalController.getController();
-
-      // --- INICIO DA CORRECAO ---
       
       // 1. Decodificacao Fisica (Desfaz a codificacao Manchester/Binaria/etc.)
       //    (O 'quadroAck' que recebemos ainda esta fisicamente codificado)
@@ -133,18 +131,17 @@ FuncoesAuxiliares aux = new FuncoesAuxiliares();
 
       // 2. Processamento da Camada de Enlace (Desfaz Enquadramento e Controle de Erro)
       //    (Agora usamos o 'ackBitsDecodificados' que acabamos de obter)
-      int[] ackBitsEnquadrado = CamadaEnlaceDadosReceptora.CamadaDeEnlaceReceptoraEnquadramento(ackBitsDecodificados);
-      int[] ackBitsControle = CamadaEnlaceDadosReceptora.CamadaDeEnlaceReceptoraControleDeErro(ackBitsEnquadrado, null); // Passa null, ACK nao gera outro ACK
-
+      int[] ackBitsFluxo = CamadaEnlaceDadosReceptora.CamadaDeEnlaceReceptoraControleDeFluxo(ackBitsDecodificados);
+      int[] ackBitsControle = CamadaEnlaceDadosReceptora.CamadaDeEnlaceReceptoraControleDeErro(ackBitsFluxo, null); // Passa null, ACK nao gera outro ACK
       if (ackBitsControle == null) {
         System.out.println("ACK descartado por erro de controle.");
         // Nao faz nada, vai causar timeout no transmissor original.
         return;
       }
+      int[] ackBitsEnquadrado = CamadaEnlaceDadosReceptora.CamadaDeEnlaceReceptoraEnquadramento(ackBitsControle);
 
-      int[] ackBitsFluxo = CamadaEnlaceDadosReceptora.CamadaDeEnlaceReceptoraControleDeFluxo(ackBitsControle);
       
-      int ackBitsPuro = aux.lerBits(ackBitsFluxo, 0, 8);
+      int ackBitsPuro = aux.lerBits(ackBitsEnquadrado, 0, 8);
       if (ackBitsPuro == 0b10101010) {
           synchronized (ackLock) {
               this.ackRecebido = true;

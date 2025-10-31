@@ -660,7 +660,7 @@ public class CamadaEnlaceDadosReceptora {
     return quadroControlado;
   } // fim do metodo
     /**************************************************************
-  * Metodo: enviarAck (NOVO)
+  * Metodo: enviarAck 
   * Funcao: Rota de retorno para o ACK. Chamado pelo receptor.
   * @param ackQuadro | O quadro de ACK
   * @return void 
