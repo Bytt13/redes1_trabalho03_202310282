@@ -334,7 +334,7 @@ public class CamadaEnlaceDadosReceptora {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
 
     // Descobre o tamanho total de bits, incluindo o bit de paridade
-    int totalBitsRecebidos = quadro.length * 32;
+    int totalBitsRecebidos = auxiliar.descobrirTotalDeBitsReais(quadro);
 
     // Se o quadro estiver vazio, nao ha nada a fazer.
     if (totalBitsRecebidos == 0) {
