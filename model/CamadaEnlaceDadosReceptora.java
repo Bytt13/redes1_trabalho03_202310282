@@ -370,7 +370,6 @@ public class CamadaEnlaceDadosReceptora {
     } else {
       enviarAck(transmissor);
     }
-    // 8. nao houve erro (Nao faz nada, conforme solicitado)
     // 10. fim do se
 
     // Agora, removemos o bit de paridade para passar apenas os dados

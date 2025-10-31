@@ -99,43 +99,52 @@ public class CamadaFisicaTransmissora {
   } // Fim do metodo
 
   /**************************************************************
-  * Metodo: receberAck (NOVO - Requisito 6)
+  * Metodo: receberAck
   * Funcao: Metodo de callback chamado pelo Meio quando um ACK
   * chega para este transmissor.
   * @param quadroAck | o quadro de ACK (8 bits)
   * @return void 
   * ********************************************************* */
     public void receberAck(int[] quadroAck) {
-      FuncoesAuxiliares aux = new FuncoesAuxiliares();
+FuncoesAuxiliares aux = new FuncoesAuxiliares();
       TelaPrincipalController controller = TelaPrincipalController.getController();
-      int[] ackBitsEnquadrado = CamadaEnlaceDadosReceptora.CamadaDeEnlaceReceptoraEnquadramento(quadroAck);
-      int[] ackBitsControle = CamadaEnlaceDadosReceptora.CamadaDeEnlaceReceptoraControleDeErro(ackBitsEnquadrado, null);
+
+      // --- INICIO DA CORRECAO ---
+      
+      // 1. Decodificacao Fisica (Desfaz a codificacao Manchester/Binaria/etc.)
+      //    (O 'quadroAck' que recebemos ainda esta fisicamente codificado)
+      int tipoDeCodificacao = aux.numberCodification(controller.getCodificacao());
+      int[] ackBitsDecodificados; // Este sera o quadro apos a decodificacao fisica
+
+      switch(tipoDeCodificacao) {
+        case 0:
+          ackBitsDecodificados = CamadaFisicaReceptora.CamadaFisicaReceptoraDecodificacaoBinaria(quadroAck);
+          break; 
+        case 1:
+          ackBitsDecodificados = CamadaFisicaReceptora.CamadaFisicaReceptoraDecodificacaoManchester(quadroAck);
+          break;
+        case 2: 
+          ackBitsDecodificados = CamadaFisicaReceptora.CamadaFisicaReceptoraDecodificacaoManchesterDiferencial(quadroAck);
+          break;
+        default:
+          ackBitsDecodificados = CamadaFisicaReceptora.CamadaFisicaReceptoraDecodificacaoBinaria(quadroAck);
+          break;
+      } // Fim do switch
+
+      // 2. Processamento da Camada de Enlace (Desfaz Enquadramento e Controle de Erro)
+      //    (Agora usamos o 'ackBitsDecodificados' que acabamos de obter)
+      int[] ackBitsEnquadrado = CamadaEnlaceDadosReceptora.CamadaDeEnlaceReceptoraEnquadramento(ackBitsDecodificados);
+      int[] ackBitsControle = CamadaEnlaceDadosReceptora.CamadaDeEnlaceReceptoraControleDeErro(ackBitsEnquadrado, null); // Passa null, ACK nao gera outro ACK
+
       if (ackBitsControle == null) {
         System.out.println("ACK descartado por erro de controle.");
         // Nao faz nada, vai causar timeout no transmissor original.
         return;
       }
-      int[] ackBitsFluxo = CamadaEnlaceDadosReceptora.CamadaDeEnlaceReceptoraControleDeFluxo(ackBitsControle);
-      int tipoDeCodificacao = aux.numberCodification(controller.getCodificacao()); // pega a codificacao escolhida e transforma em int
-      int[] fluxoBrutoDeBits; // Cria o fluxo de bits que vamos passar adiante
-      switch(tipoDeCodificacao) {
-        case 0:
-          fluxoBrutoDeBits = CamadaFisicaReceptora.CamadaFisicaReceptoraDecodificacaoBinaria(ackBitsFluxo);
-          break; 
-        case 1:
-          fluxoBrutoDeBits = CamadaFisicaReceptora.CamadaFisicaReceptoraDecodificacaoManchester(ackBitsFluxo);
-          break;
-        case 2: 
-          fluxoBrutoDeBits = CamadaFisicaReceptora.CamadaFisicaReceptoraDecodificacaoManchesterDiferencial(ackBitsFluxo);
-          break;
-        default:
-          fluxoBrutoDeBits = CamadaFisicaReceptora.CamadaFisicaReceptoraDecodificacaoBinaria(ackBitsFluxo);
-          break;
-      } // Fim do switch
 
-      // Switch para escolher qual decodificacao usar no quadro ja desenquadrado
+      int[] ackBitsFluxo = CamadaEnlaceDadosReceptora.CamadaDeEnlaceReceptoraControleDeFluxo(ackBitsControle);
       
-      int ackBitsPuro = aux.lerBits(fluxoBrutoDeBits, 0, 8);
+      int ackBitsPuro = aux.lerBits(ackBitsFluxo, 0, 8);
       if (ackBitsPuro == 0b10101010) {
           synchronized (ackLock) {
               this.ackRecebido = true;
