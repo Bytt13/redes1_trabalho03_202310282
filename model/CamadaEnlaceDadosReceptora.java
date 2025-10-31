@@ -332,9 +332,15 @@ public class CamadaEnlaceDadosReceptora {
   * ********************************************************* */
   public static int[] CamadadeEnlaceReceptoraControleDeErroBitParidadePar(int[] quadro, CamadaFisicaTransmissora transmissor) {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
+    TelaPrincipalController controller = TelaPrincipalController.getController();
 
     // Descobre o tamanho total de bits, incluindo o bit de paridade
-    int totalBitsRecebidos = quadro.length * 32;
+    int totalBitsRecebidos;
+    if(controller.getEnquadramento().equals("Violacao da Camada Fisica")) {
+      totalBitsRecebidos = auxiliar.descobrirTotalDeBitsReais(quadro);
+    } else {
+      totalBitsRecebidos = quadro.length * 32;
+    }
 
     // Se o quadro estiver vazio, nao ha nada a fazer.
     if (totalBitsRecebidos == 0) {
