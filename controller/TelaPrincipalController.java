@@ -20,7 +20,12 @@ import javafx.scene.control.ComboBox;
 
 public class TelaPrincipalController {
   public static TelaPrincipalController controller; // Cria a variavel de controller para passarmos adiante no codigo
-
+  // Fila para armazenar os bits de animacao de cada subquadro
+  private final java.util.Queue<int[]> filaBitsAnimacao = new java.util.concurrent.ConcurrentLinkedQueue<>();
+  // Fila para armazenar o tamanho (em bits) de cada subquadro
+  private final java.util.Queue<Integer> filaTamanhoBits = new java.util.concurrent.ConcurrentLinkedQueue<>();
+  // Contador atomico para saber quantos subquadros ainda estao sendo processados
+  private java.util.concurrent.atomic.AtomicInteger subquadrosPendentes = new java.util.concurrent.atomic.AtomicInteger(0);
   @FXML
   private Button botaoEnviar; //Declara a variavel responsavel pelo botao
 
@@ -76,7 +81,7 @@ public class TelaPrincipalController {
   } // Fim do metodo
 
   /**************************************************************
-  * Metodo: botao
+  * Metodo: enviar
   * Funcao: faz o botao iniciar a simulacao
   * @param void
   * @return void 
@@ -96,6 +101,14 @@ public class TelaPrincipalController {
     textAreaCodificada.clear();
     textAreaDecodificada.clear();
     textAreaMensagemFinal.clear();
+    // Para qualquer animacao anterior
+    if (animation != null) {
+      animation.stop();
+    }
+    // Limpa as filas de animacao
+    filaBitsAnimacao.clear();
+    filaTamanhoBits.clear();
+    subquadrosPendentes.set(0); // Reseta o contador
     
     // Chamada da camada de aplicacao transmissora
     new AplicacaoTransmissora();
@@ -365,4 +378,81 @@ public class TelaPrincipalController {
   {
     return textAreaMensagemFinal.getText(); // retorno da funcao
   } // Fim do metodo
+  /**************************************************************
+* Metodo: setSubquadrosEsperados
+* Funcao: Define quantos subquadros a animacao deve esperar
+* @param total | numero total de subquadros
+* @return void 
+* ********************************************************* */
+public void setSubquadrosEsperados(int total) {
+  this.subquadrosPendentes.set(total);
+}
+
+/**************************************************************
+* Metodo: enfileirarBitsParaAnimacao
+* Funcao: Chamado por cada thread da CamadaFisica para guardar
+* seu pedaco de animacao.
+* @param fluxoBrutoDeBits | O array de bits do subquadro
+* @param totalDeBitsReais | O tamanho exato desse subquadro
+* @return void 
+* ********************************************************* */
+public void enfileirarBitsParaAnimacao(int[] fluxoBrutoDeBits, int totalDeBitsReais) {
+  filaBitsAnimacao.add(fluxoBrutoDeBits);
+  filaTamanhoBits.add(totalDeBitsReais);
+
+  // Decrementa o contador e verifica se foi o ultimo
+  if (subquadrosPendentes.decrementAndGet() == 0) {
+    // Foi o ultimo subquadro! Hora de animar tudo.
+    // Garante que isso rode na Thread da GUI
+    javafx.application.Platform.runLater(() -> {
+      compilarEAnimarFila();
+    });
+  }
+}
+
+/**************************************************************
+* Metodo: compilarEAnimarFila
+* Funcao: Junta todos os subquadros da fila em um unico
+* array de bits e inicia a animacao final.
+* @param void
+* @return void 
+* ********************************************************* */
+private void compilarEAnimarFila() {
+  if (filaBitsAnimacao.isEmpty()) {
+    return; // Nada a fazer
+  }
+
+  // 1. Calcular o tamanho total em bits
+  int totalBitsParaAnimar = 0;
+  for (Integer tamanho : filaTamanhoBits) {
+    totalBitsParaAnimar += tamanho;
+  }
+
+  if (totalBitsParaAnimar == 0) {
+    return;
+  }
+
+  // 2. Criar o array "final" que contera todos os bits
+  int tamanhoArrayInts = (totalBitsParaAnimar + 31) / 32;
+  int[] bitsCombinados = new int[tamanhoArrayInts];
+  int ponteiroEscrita = 0;
+
+  // 3. Copiar todos os bits dos subquadros (da fila) para o array final
+  utils.FuncoesAuxiliares aux = new utils.FuncoesAuxiliares();
+
+  while (!filaBitsAnimacao.isEmpty() && !filaTamanhoBits.isEmpty()) {
+    int[] subquadro = filaBitsAnimacao.poll();
+    int tamanhoSubquadro = filaTamanhoBits.poll();
+
+    // Copia bit a bit do subquadro para o array combinado
+    for (int i = 0; i < tamanhoSubquadro; i++) {
+      int bit = aux.lerBits(subquadro, i, 1);
+      aux.escreverBits(bitsCombinados, ponteiroEscrita++, bit, 1);
+    }
+  }
+
+  // 4. Chamar a animacao (drawSignal) com o array combinado
+  int[] bitsParaAnimacao = desempacotarBitsParaAnimacao(bitsCombinados, totalBitsParaAnimar);
+  drawSignal(bitsParaAnimacao);
+}
 } // fim da classe

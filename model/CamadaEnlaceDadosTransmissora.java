@@ -20,6 +20,19 @@ public class CamadaEnlaceDadosTransmissora {
   * @return void 
   * ********************************************************* */
   public CamadaEnlaceDadosTransmissora(int []quadro) {
+    TelaPrincipalController controller = TelaPrincipalController.getController();
+
+    // 1. Conta quantos subquadros ativos serao processados
+    int subquadrosAtivos = 0;
+    for(int i = 0; i < quadro.length; i++) {
+      if(quadro[i] != 0) {
+        subquadrosAtivos++;
+      }
+    }
+
+    // 2. Avisa o controller o numero de subquadros que ele deve esperar
+    controller.setSubquadrosEsperados(subquadrosAtivos);
+    // --- FIM DA MUDANCA ---
     for(int i = 0; i < quadro.length; i++) {
       if(quadro[i] == 0) continue;
       final int[] subquadroPayload = new int[] { quadro[i] };

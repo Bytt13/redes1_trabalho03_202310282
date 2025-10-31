@@ -53,20 +53,19 @@ public class CamadaFisicaTransmissora {
       final int[] bitsAnimacao = fluxoBrutoDeBits;
       final int bitsParaAnimar = totalDeBitsReais; // A animacao deve usar o mesmo numero de bits
 
-        // Atualiza a GUI na thread do JavaFX
-        javafx.application.Platform.runLater(() -> {
-        // Pega o texto atual e anexa o novo, para nao sobrescrever (Correcao da concorrencia)
-        String textoAtual = controller.getTextFieldCodificada();
-        StringBuilder sbGUI = new StringBuilder(textoAtual);
-        if (!textoAtual.isEmpty()) {
-            sbGUI.append("\n"); // Adiciona uma nova linha para separar os quadros
-        }
-        sbGUI.append(textoCodificado);
-        controller.setTextAreaCodificada(sbGUI.toString()); // Envia o texto acumulado
-
-        // Inicia a animacao deste subquadro
-        auxiliar.animate(controller, bitsAnimacao, bitsParaAnimar);
+      javafx.application.Platform.runLater(() -> {
+      String textoAtual = controller.getTextFieldCodificada();
+      StringBuilder sbGUI = new StringBuilder(textoAtual);
+      if (!textoAtual.isEmpty()) {
+          sbGUI.append("\n"); 
+      }
+      sbGUI.append(textoCodificado);
+      controller.setTextAreaCodificada(sbGUI.toString()); 
     });
+
+    // 2. Envia os bits para a fila de animacao no controller
+    // (O controller vai decidir quando animar)
+    controller.enfileirarBitsParaAnimacao(bitsAnimacao, bitsParaAnimar);
 
     /* *********************************************************
                         DEBUGGER DE SAIDA
@@ -111,6 +110,11 @@ public class CamadaFisicaTransmissora {
       TelaPrincipalController controller = TelaPrincipalController.getController();
       int[] ackBitsEnquadrado = CamadaEnlaceDadosReceptora.CamadaDeEnlaceReceptoraEnquadramento(quadroAck);
       int[] ackBitsControle = CamadaEnlaceDadosReceptora.CamadaDeEnlaceReceptoraControleDeErro(ackBitsEnquadrado, null);
+      if (ackBitsControle == null) {
+        System.out.println("ACK descartado por erro de controle.");
+        // Nao faz nada, vai causar timeout no transmissor original.
+        return;
+      }
       int[] ackBitsFluxo = CamadaEnlaceDadosReceptora.CamadaDeEnlaceReceptoraControleDeFluxo(ackBitsControle);
       int tipoDeCodificacao = aux.numberCodification(controller.getCodificacao()); // pega a codificacao escolhida e transforma em int
       int[] fluxoBrutoDeBits; // Cria o fluxo de bits que vamos passar adiante

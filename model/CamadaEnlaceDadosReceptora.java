@@ -24,6 +24,10 @@ public class CamadaEnlaceDadosReceptora {
     this.transmissor = transmissor;
     int[] quadroOrdenado = CamadaDeEnlaceReceptoraControleDeFluxo(quadro);
     int[] quadroControlado = CamadaDeEnlaceReceptoraControleDeErro(quadroOrdenado, transmissor);
+    if (quadroControlado == null) {
+      System.out.println("Subquadro descartado por erro de controle.");
+      return; // Aborta o processamento deste subquadro
+    }
     int[] quadroDesenquadrado = CamadaDeEnlaceReceptoraEnquadramento(quadroControlado);
 
     new CamadaDeAplicacaoReceptora(quadroDesenquadrado);
@@ -357,10 +361,12 @@ public class CamadaEnlaceDadosReceptora {
         Alert alert = new Alert(AlertType.ERROR);
         alert.setTitle("Erro de Transmissão");
         alert.setHeaderText("Erro de Paridade Detectado");
-        alert.setContentText("Um erro foi detectado nos dados recebidos! O controle de paridade par falhou (a contagem de bits '1' é ímpar).");
+        alert.setContentText("Um erro foi detectado nos dados recebidos! O controle de paridade par falhou (a contagem de bits '1' é ímpar), quadro descartado.");
         
         alert.show();
       });
+
+      return null;
     } else {
       enviarAck(transmissor);
     }
@@ -430,10 +436,14 @@ public class CamadaEnlaceDadosReceptora {
         Alert alert = new Alert(AlertType.ERROR);
         alert.setTitle("Erro de Transmissão");
         alert.setHeaderText("Erro de Paridade Detectado");
-        alert.setContentText("Um erro foi detectado nos dados recebidos! O controle de paridade impar falhou (a contagem de bits '1' é par).");
+        alert.setContentText("Um erro foi detectado nos dados recebidos! O controle de paridade impar falhou (a contagem de bits '1' é par), quadro descartado.");
         
         alert.show();
       });
+
+      return null;
+    } else {
+      enviarAck(transmissor);
     }
     // 8. nao houve erro (Nao faz nada, conforme solicitado)
     // 10. fim do se
@@ -530,13 +540,17 @@ public class CamadaEnlaceDadosReceptora {
           
           // Correcao para StringBuilder
           StringBuilder sb = new StringBuilder();
-          sb.append("Um erro foi detectado nos dados recebidos! O CRC falhou.\n");
+          sb.append("Um erro foi detectado nos dados recebidos! O CRC falhou e o quadro foi descartado.\n");
           sb.append("Calculado: 0x").append(Integer.toHexString(crcCalculado).toUpperCase()).append("\n");
           sb.append("Recebido:  0x").append(Integer.toHexString(crcRecebido).toUpperCase());
           
           alert.setContentText(sb.toString());
           alert.show();
         });
+
+        return null;
+    } else {
+      enviarAck(transmissor);
     }
 
     // 4. Remover o CRC e retornar apenas os dados
@@ -608,14 +622,18 @@ public class CamadaEnlaceDadosReceptora {
 
         StringBuilder sb = new StringBuilder();
         sb.append("Um erro foi detectado nos dados recebidos!\n");
-        sb.append("A verificação de Hamming falhou.\n");
+        sb.append("A verificação de Hamming vai corrigir os erros.\n");
         sb.append("Posição do erro (Síndrome): ").append(syndromeFinal);
         
         alert.setContentText(sb.toString());
         alert.show();
       });
+
+      return null;
       // NOTA: O exercicio nao pede correcao, apenas deteccao.
       // Se pedisse, poderiamos inverter o bit na 'posicao - 1' (syndrome - 1)
+    } else {
+      enviarAck(transmissor);
     }
 
     // 4. Extrair os bits de dados originais (remover os bits de paridade)
