@@ -359,7 +359,7 @@ public class CamadaEnlaceDadosTransmissora {
     // Cria uma instancia das funcoes auxiliares
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
 
-    // Descobre quantos bits realmente existem na mensagem
+    // Descobre quantos bits realmente existem na mensagems
     int totalBits = quadro.length * 32;
 
     // Se a mensagem estiver vazia, apenas retorna o quadro original

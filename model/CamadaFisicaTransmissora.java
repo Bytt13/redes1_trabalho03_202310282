@@ -306,7 +306,7 @@ public class CamadaFisicaTransmissora {
 
     // Isso garante que estamos codificando apenas os bits da mensagem,
     // e nao o "padding" (zeros extras) do final do array.
-    int totalBitsMensagem = auxiliar.descobrirTotalDeBitsReais(quadro);
+    int totalBitsMensagem = quadro.length * 32;
     
     if (totalBitsMensagem == 0)
       return new int[0]; // se a mensagem ta vazia nem finaliza o processamento
