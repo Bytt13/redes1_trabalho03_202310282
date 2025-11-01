@@ -2,7 +2,7 @@
 * Autor............: Lucas de Menezes Chaves
 * Matricula........: 202310282
 * Inicio...........: 18/08/2025
-* Ultima alteracao.: 29/08/2025
+* Ultima alteracao.: 31/10/2025
 * Nome.............: Principal
 * Funcao...........: Roda o programa com o comando javac Principal.java
 *************************************************************** */
@@ -18,7 +18,7 @@ public class Principal extends Application{
   /****************************************************************
   * Metodo: start
   * Funcao: carrega os elementos fxml para tela
-  * @param Stage stage
+  * @param stage O palco principal da aplicacao
   * @throws Exception para casos de erros
   * @return void 
   * *********************************************************** */
@@ -40,7 +40,7 @@ public class Principal extends Application{
   /****************************************************************
   * Metodo: main
   * Funcao: roda o programa java
-  * @param String[] args
+  * @param args Argumentos da linha de comando
   * @return void 
   * ************************************************************ */
   public static void main(String[] args) {

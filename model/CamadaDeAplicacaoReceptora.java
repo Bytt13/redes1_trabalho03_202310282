@@ -2,7 +2,7 @@
 * Autor..............: Lucas de Menezes Chaves
 * Matricula........: 202310282
 * Inicio...........: 22/08/2025
-* Ultima alteracao.: 29/08/2025
+* Ultima alteracao.: 31/10/2025
 * Nome.............: CamadaDeAplicacaoReceptora
 * Funcao...........: Transfere a mensagem convertida de binario para texto para aplicacao receptora
 *************************************************************** */
@@ -16,7 +16,7 @@ public class CamadaDeAplicacaoReceptora {
   /**************************************************************
   * Metodo: CamadaDeAplicacaoReceptora
   * Funcao: recebe os bits e passa eles para camada seguinte em forma de texto
-  * @param  quadro | bits recebidos
+  * @param quadro | bits recebidos
   * @return void 
   * ********************************************************* */
     public CamadaDeAplicacaoReceptora(int[] quadro) {

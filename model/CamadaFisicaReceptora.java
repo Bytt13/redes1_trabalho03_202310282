@@ -2,7 +2,7 @@
 * Autor..............: Lucas de Menezes Chaves
 * Matricula........: 202310282
 * Inicio...........: 21/08/2025
-* Ultima alteracao.: 30/10/2025
+* Ultima alteracao.: 31/10/2025
 * Nome.............: CamadaFisicaReceptora
 * Funcao...........: Transfere a mensagem decodificada para camada aplicacao receptora
 *************************************************************** */
@@ -18,6 +18,7 @@ public class CamadaFisicaReceptora {
 * Metodo: CamadaFisicaReceptora
 * Funcao: decodifica os bits e passa eles para camada seguinte
 * @param quadro | bits recebidos
+* @param transmissor | objeto da camada fisica transmissora
 * @return void 
 * ********************************************************* */
   public CamadaFisicaReceptora(int[] quadro, CamadaFisicaTransmissora transmissor) {
@@ -43,8 +44,7 @@ public class CamadaFisicaReceptora {
       default:
         fluxoBrutoDeBits = CamadaFisicaReceptoraDecodificacaoBinaria(quadro);
         break;
-    } // Fim do switch
-
+    } // fim do switch
     /* *********************************************************
                         DEBUGGER DE CHEGADA
     ********************************************************* */
@@ -61,11 +61,12 @@ public class CamadaFisicaReceptora {
     new CamadaEnlaceDadosReceptora(fluxoBrutoDeBits, transmissor);
   } // Fim do metodo
 
+
   /**************************************************************
-  * Metodo: CamadaFisicaTransmissoraCodificacaoBinaria
+  * Metodo: CamadaFisicaReceptoraDecodificacaoBinaria
   * Funcao: envia a mensagem (em bits) decodificada em binario para a proxima camada
-  * @param  quadro | mensagem recebida (em bits)
-  * @return a mensagem eh igual aos bits em binario 
+  * @param quadro | mensagem recebida (em bits)
+  * @return int[] | a mensagem eh igual aos bits em binario 
   * ********************************************************* */
   public static int[] CamadaFisicaReceptoraDecodificacaoBinaria(int[] quadro) {
     return quadro; // Em binario, os bits ja estao na forma final
@@ -75,13 +76,13 @@ public class CamadaFisicaReceptora {
   * Metodo: CamadaFisicaReceptoraDecodificacaoManchester
   * Funcao: envia a mensagem (em bits) decodificada em manchester para a proxima camada
   * @param quadro | mensagem recebida (em bits)
-  * @return a mensagem decodificada em manchester
+  * @return int[] | a mensagem decodificada em manchester
   * ********************************************************* */
   public static int[] CamadaFisicaReceptoraDecodificacaoManchester(int[] quadro) {
     TelaPrincipalController controller = TelaPrincipalController.getController();
     //if para verificar se foi violacao da camada fisica
     if(controller.getEnquadramento().equals("Violacao da Camada Fisica")) {
-      // *** MUDANCA AQUI: Passa o 'tipoDeCodificacao' (1 = Manchester)
+      // Passa o 'tipoDeCodificacao' (1 = Manchester)
       return CamadaFisicaReceptoraDesenquadramentoViolacaoFisica(quadro, 1);
     } // fim do if
     
@@ -119,13 +120,13 @@ public class CamadaFisicaReceptora {
   * Metodo: CamadaFisicaReceptoraDecodificacaoManchesterDiferencial
   * Funcao: envia a mensagem (em bits) deodificada em manchester diferencial para a proxima camada
   * @param quadro | mensagem recebida (em bits)
-  * @return a mensagem decodificada em mancheser diferencial
+  * @return int[] | a mensagem decodificada em mancheser diferencial
   * ********************************************************* */
   public static int[] CamadaFisicaReceptoraDecodificacaoManchesterDiferencial(int[] quadro) {
     TelaPrincipalController controller = TelaPrincipalController.getController();
     //if para verificar se foi violacao da camada fisica
     if(controller.getEnquadramento().equals("Violacao da Camada Fisica")) {
-      // *** MUDANCA AQUI: Passa o 'tipoDeCodificacao' (2 = Manchester Diferencial)
+      // Passa o 'tipoDeCodificacao' (2 = Manchester Diferencial)
       return CamadaFisicaReceptoraDesenquadramentoViolacaoFisica(quadro, 2);
     } // fim do if
 
@@ -185,15 +186,13 @@ public class CamadaFisicaReceptora {
   * @param tipoDeDecodificacao | 1 para Manchester, 2 para Diferencial
   * @return int[] | novo quadro sem as flags
   * ********************************************************* */
-  // *** MUDANCA AQUI: Assinatura do metodo
   public static int[] CamadaFisicaReceptoraDesenquadramentoViolacaoFisica(int[] quadro, int tipoDeDecodificacao) {
-    // *** MUDANCA AQUI: Removemos a logica que pega o controller e descobre a decodificacao
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
 
     final int VIOLACAO = 0b1111;
     final int TAMANHO_VIOLACAO_BITS = 4;
 
-    // <<< CORRECAO 1: Usar 'descobrirTotalDeBitsReais'
+    // Usar 'descobrirTotalDeBitsReais'
     // Precisamos saber o tamanho real do *sinal* recebido,
     // para nao tentar ler o "padding" do array.
     int totalBitsSinal = auxiliar.descobrirTotalDeBitsReais(quadro);
@@ -218,7 +217,7 @@ public class CamadaFisicaReceptora {
           quadroIniciado = true; // marca que o processamento de dados pode comecar
           i += TAMANHO_VIOLACAO_BITS; // pula os 4 bits da violacao
           
-          // <<< CORRECAO 2: Resetar o nivel do Manchester Diferencial
+          // Resetar o nivel do Manchester Diferencial
           // Sincroniza o receptor com o transmissor toda vez que uma
           // flag eh detectada.
           nivelAnterior = 1; 

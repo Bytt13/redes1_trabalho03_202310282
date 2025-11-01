@@ -1,8 +1,8 @@
 /***************************************************************** 
-Autor..............: Lucas de Menezes Chaves
+* Autor..............: Lucas de Menezes Chaves
 * Matricula........: 202310282
 * Inicio...........: 18/08/2025
-* Ultima alteracao.: 29/05/2025
+* Ultima alteracao.: 31/10/2025
 * Nome.............: FuncoesAuxiliares
 * Funcao...........: Codifica e decodifica bits, e transformas arrays em strings
 *************************************************************** */
@@ -15,7 +15,7 @@ public class FuncoesAuxiliares {
   * Metodo: arrayToString
   * Funcao: transforma o array de bits em uma string para ser apresentada na caixa de texto
   * @param array | bits
-  * @return string do array de bits
+  * @return String | string do array de bits
   * ********************************************************* */
   public String arrayToString(int[] array) {
     StringBuilder builder = new StringBuilder(); //Cria o builder da string
@@ -30,8 +30,9 @@ public class FuncoesAuxiliares {
   /**************************************************************
   * Metodo: binaryArrayToString
   * Funcao: transforma o array de bits em uma string para ser apresentada na caixa de texto
-  * @param array | bits
-  * @return  string do array de bits
+  * @param frotaDeBits | bits
+  * @param comprimentoOriginal | tamanho original da string
+  * @return String | string do array de bits
   * ********************************************************* */
   public String binaryArrayToString(int[] frotaDeBits, int comprimentoOriginal) {
     StringBuilder palavraDesmontada = new StringBuilder(comprimentoOriginal);
@@ -41,7 +42,7 @@ public class FuncoesAuxiliares {
       // Usa a funcao que ja tinhamos para pegar um caractere especifico
       char caractere = getCharFromString(frotaDeBits, i);
       
-      // Se encontramos o caractere nulo, ele é o padding (preenchimento).
+      // Se encontramos o caractere nulo, ele e o padding (preenchimento).
       // Paramos de ler para nao adicionar lixo na string final.
       if (caractere == '\0') {
           break;
@@ -58,7 +59,7 @@ public class FuncoesAuxiliares {
   * Metodo: stringToBinary
   * Funcao: transforma o texto em binario
   * @param texto | texto que vai ser convertido
-  * @return array de inteiros do texto em binario
+  * @return int[] | array de inteiros do texto em binario
   * ********************************************************* */
   public int[] stringToBinary(String texto) {
     if (texto.isEmpty()) {
@@ -93,7 +94,7 @@ public class FuncoesAuxiliares {
   * Metodo: binaryString
   * Funcao: retorna uma string de binario
   * @param numero | numero recebido
-  * @return string dos binarios
+  * @return String | string dos binarios
   * ********************************************************* */
   public String binaryString(int numero) {
     StringBuilder sb = new StringBuilder(35); // 32 bits + 3 espacos
@@ -111,12 +112,13 @@ public class FuncoesAuxiliares {
   * Metodo: getCharFromString
   * Funcao: transforma o inteiro em binario
   * @param bits | os bits recebidos
-  * @return letra do bit
+  * @param i | indice do caractere
+  * @return char | letra correspondente
   * ********************************************************* */
   public char getCharFromString(int[] bits, int i) {
     int indice = i / 4; // cria um indice
     int fluxo = bits[indice]; // pega o bit daquele indice especifico
-    int pos = i % 4; // Descobre a posicao do caractere dentro do arry de int
+    int pos = i % 4; // Descobre a posicao do caractere dentro do array de int
     int shift = (3 - pos) * 8; //calcula o deslocamento
 
     return (char) ((fluxo >> shift) & 255); // aplica a mascara 11111111 (255) para limpar os outros bits
@@ -124,11 +126,11 @@ public class FuncoesAuxiliares {
 
   /**************************************************************
 * Metodo: lerBits
-* Funcao: le os bits para o enquadramento de contagem de caracteres
+* Funcao: le uma sequencia especifica de bits de um array de inteiros
 * @param array | os bits recebidos
-* @param posInicialBit posicao inicial do bit
-* @param numBits numero de bits
-* @return os bits que devem ser lidos
+* @param posInicialBit | posicao inicial do bit
+* @param numBits | numero de bits a ler
+* @return int | o valor inteiro formado pelos bits lidos
 * ********************************************************* */
 public int lerBits(int[] array, int posInicialBit, int numBits) {
    int valorLido = 0; // o valor que sera retornado
@@ -150,12 +152,12 @@ public int lerBits(int[] array, int posInicialBit, int numBits) {
 
   /**************************************************************
   * Metodo: escreverBits
-  * Funcao: escreve os bits para o enquadramento de contagem de caracteres
+  * Funcao: escreve um valor inteiro como uma sequencia de bits em um array
   * @param array | os bits recebidos
-  * @param posInicialBit posicao inicial do bit
-  * @param valor valor da contagem de caracteres
-  * @param numBits numero de bits
-  * @return os bits escritos
+  * @param posInicialBit | posicao inicial para escrita
+  * @param valor | valor a ser escrito em bits
+  * @param numBits | numero de bits para escrever
+  * @return void
   * ********************************************************* */
   public void escreverBits(int[] array, int posInicialBit, int valor, int numBits) {
     for (int i = 0; i < numBits; i++) {
@@ -182,7 +184,7 @@ public int lerBits(int[] array, int posInicialBit, int numBits) {
   * limitada a um numero especifico de bits, para exibicao na GUI.
   * @param arrayDeBits | O array de inteiros contendo os bits.
   * @param totalDeBitsParaMostrar | O numero exato de bits a serem convertidos.
-  * @return String formatada dos bits.
+  * @return String | String formatada dos bits.
   * ********************************************************* */
   public String arrayDeBitsParaString(int[] arrayDeBits, int totalDeBitsParaMostrar) {
       StringBuilder builder = new StringBuilder();
@@ -215,14 +217,14 @@ public int lerBits(int[] array, int posInicialBit, int numBits) {
   /**************************************************************
   * Metodo: numberCodification
   * Funcao: transforma o tipo de codificacao escolhida em numero
-  * @param codificacao | codificacao escolhida
-  * @return numero correspondente
+  * @param c | codificacao escolhida (String)
+  * @return int | numero correspondente
   * ********************************************************* */
   public int numberCodification(String c) {
     int number = 0; // numero que vai receber a codificacao
     // Switch que vai permitir que o numero seja escolhido dependendo do que foi escolhido no comboBox
     switch(c) {
-      case "Binário":
+      case "Binario":
         number = 0;
         break;
       case "Manchester":
@@ -240,9 +242,9 @@ public int lerBits(int[] array, int posInicialBit, int numBits) {
 
   /**************************************************************
   * Metodo: enquadCodification
-  * Funcao: transforma o tipo de enquadramento escolhida em numero
-  * @param enquadramento | codificacao escolhida
-  * @return numero correspondente
+  * Funcao: transforma o tipo de enquadramento escolhido em numero
+  * @param c | enquadramento escolhido (String)
+  * @return int | numero correspondente
   * ********************************************************* */
   public int enquadCodification(String c) {
     int number = 0; // numero que vai receber a codificacao
@@ -271,9 +273,8 @@ public int lerBits(int[] array, int posInicialBit, int numBits) {
   * Metodo: animate
   * Funcao: anima a onda de transmissao na GUI
   * @param controller | controller para animar
-  * @param mensagemOriginal | texto da mensagem original para animar na GUI
   * @param fluxoBrutoDeBits | fluxo de bits que vamos animar
-  * @param codificacao | codificacao escolhida
+  * @param totalDeBitsParaAnimar | numero total de bits para animar
   * @return void
   * *********************************************************** */
   public void animate(TelaPrincipalController controller, int[] fluxoBrutoDeBits, int totalDeBitsParaAnimar) {
@@ -283,7 +284,7 @@ public int lerBits(int[] array, int posInicialBit, int numBits) {
    /**************************************************************
   * Metodo: descobrirTotalDeBitsReais
   * Funcao: descobre os bits uteis
-  * @param quadro
+  * @param quadro | array de inteiros com os bits
   * @return int | posicao do ultimo bit 1
   * ********************************************************* */
   public int descobrirTotalDeBitsReais(int[] quadro) {
@@ -304,9 +305,9 @@ public int lerBits(int[] array, int posInicialBit, int numBits) {
   } // fim do metodo
     /**************************************************************
   * Metodo: controlCodification
-  * Funcao: transforma o tipo de controle escolhida em numero
-  * @param codificacao | codificacao escolhida
-  * @return numero correspondente
+  * Funcao: transforma o tipo de controle escolhido em numero
+  * @param c | controle escolhido (String)
+  * @return int | numero correspondente
   * ********************************************************* */
   public int controlCodification(String c) {
     int number = 0; // numero que vai receber a codificacao

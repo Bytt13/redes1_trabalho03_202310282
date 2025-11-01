@@ -2,7 +2,7 @@
 * Autor..............: Lucas de Menezes Chaves
 * Matricula........: 202310282
 * Inicio...........: 20/08/2025
-* Ultima alteracao.: 28/09/2025
+* Ultima alteracao.: 31/10/2025
 * Nome.............: MeioDeComunicacao
 * Funcao...........: Transfere a mensagem codificada, aplicando chance de erro por quadro de enquadramento.
 *************************************************************** */
@@ -18,6 +18,7 @@ private CamadaFisicaTransmissora transmissor;
 * Metodo: MeioDeComunicacao
 * Funcao: transfere a mensagem em forma de bits, aplicando a logica de erros por quadro.
 * @param fluxoBrutoDeBits | fluxo de bits recebido
+* @param transmissor | objeto da camada fisica transmissora
 * @return void 
 * ********************************************************* */
   public MeioDeComunicacao(int[] fluxoBrutoDeBits, CamadaFisicaTransmissora transmissor) {
@@ -90,6 +91,14 @@ private CamadaFisicaTransmissora transmissor;
     
     new CamadaFisicaReceptora(fluxoBrutoDeBitsPontoB, transmissor);
   } // Fim do metodo
+
+/**************************************************************
+* Metodo: transferirAck
+* Funcao: transfere um quadro de ACK/NACK, aplicando a mesma logica de erros.
+* @param fluxoBrutoDeBits | fluxo de bits (ACK/NACK)
+* @param transmissor | objeto da camada fisica transmissora para retorno
+* @return void 
+* ********************************************************* */
   public static void transferirAck(int[] fluxoBrutoDeBits, CamadaFisicaTransmissora transmissor) {
     TelaPrincipalController controller  = TelaPrincipalController.getController();
     Random random = new Random();

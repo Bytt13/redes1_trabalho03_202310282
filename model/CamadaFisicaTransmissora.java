@@ -1,7 +1,7 @@
 /***************************************************************** * Autor............: Lucas de Menezes Chaves
 * Matricula........: 202310282
 * Inicio...........: 19/08/2025
-* Ultima alteracao.: 30/10/2025
+* Ultima alteracao.: 31/10/2025
 * Nome.............: CamadaFisicaTransmissora
 * Funcao...........: Codifica os bits da mensagem recebida
 *************************************************************** */
@@ -44,7 +44,7 @@ public class CamadaFisicaTransmissora {
         break;
     } // Fim do switch
 
-    // Calcula o numero de bits exatos apos o enquadramento
+   // Calcula o numero de bits exatos apos o enquadramento
     /* *********************************************************
       ATENCAO, ESSA PARTE EH SOMENTE PARA MOSTRAR NA GUI, NAO TEM VALOR FUNCIONAL
     ********************************************************* */
@@ -147,7 +147,6 @@ public class CamadaFisicaTransmissora {
               this.ackRecebido = true;
               ackLock.notifyAll(); // Acorda a thread que esta esperando em enviarSubquadro
           }
-          // --- FIM DA LOGICA DE TIMEOUT ---
           System.out.println("ACK Recebido pela Thread: ");
           System.out.println(Thread.currentThread().getName());
 
@@ -160,7 +159,7 @@ public class CamadaFisicaTransmissora {
   * Metodo: CamadaFisicaTransmissoraCodificacaoBinaria
   * Funcao: envia a mensagem (em bits) codificada em binario para a proxima camada
   * @param quadro | mensagem recebida (em bits)
-  * @return a mensagem eh igual aos bits em binario 
+  * @return int[] | a mensagem eh igual aos bits em binario 
   * ********************************************************* */
   public static int[] CamadaFisicaTransmissoraCodificacaoBinaria(int[] quadro) {
     return quadro; // Em binario ja eh igual aos bits
@@ -170,13 +169,13 @@ public class CamadaFisicaTransmissora {
   * Metodo: CamadaFisicaTransmissoraCodificacaoManchester
   * Funcao: envia a mensagem (em bits) codificada em manchester para a proxima camada
   * @param quadro | mensagem recebida (em bits)
-  * @return a mensagem codificada em manchester
+  * @return int[] | a mensagem codificada em manchester
   * ********************************************************* */
   public static int[] CamadaFisicaTransmissoraCodificacaoManchester(int[] quadro) {
     TelaPrincipalController controller = TelaPrincipalController.getController();
     // if para verificar se precisamos usar a violacao de camada fisica
     if(controller.getEnquadramento().equals("Violacao da Camada Fisica")) {
-      // *** MUDANCA AQUI: Passa o 'tipoDeCodificacao' (1 = Manchester)
+      // Passa o 'tipoDeCodificacao' (1 = Manchester)
       return CamadaFisicaTransmissoraEnquadramentoViolacaoFisica(quadro, 1);
     } // fim do if
     int bitsOriginais = quadro.length * 32; // cria um int com a quantidade de bits originais
@@ -223,14 +222,14 @@ public class CamadaFisicaTransmissora {
   /**************************************************************
   * Metodo: CamadaFisicaTransmissoraCodificacaoManchesterDiferencial
   * Funcao: envia a mensagem (em bits) codificada em manchester diferencial para a proxima camada
-  * @param  quadro | mensagem recebida (em bits)
-  * @return a mensagem codificada em manchester diferencial 
+  * @param quadro | mensagem recebida (em bits)
+  * @return int[] | a mensagem codificada em manchester diferencial 
   * ********************************************************* */
   public static int[] CamadaFisicaTransmissoraCodificacaoManchesterDiferencial(int[] quadro) {
     TelaPrincipalController controller = TelaPrincipalController.getController();
     // if para verificar se precisamos usar a violacao de camada fisica
     if(controller.getEnquadramento().equals("Violacao da Camada Fisica")) {
-      // *** MUDANCA AQUI: Passa o 'tipoDeCodificacao' (2 = Manchester Diferencial)
+      // Passa o 'tipoDeCodificacao' (2 = Manchester Diferencial)
       return CamadaFisicaTransmissoraEnquadramentoViolacaoFisica(quadro, 2);
     } // fim do if
     int bitsOriginais = quadro.length * 32; // cria um int com a quantidade de bits originais
@@ -294,9 +293,7 @@ public class CamadaFisicaTransmissora {
   * @param tipoDeCodificacao | 1 para Manchester, 2 para Diferencial
   * @return int[] | novo quadro com as flags
   * ********************************************************* */
-  // *** MUDANCA AQUI: Assinatura do metodo
   public static int[] CamadaFisicaTransmissoraEnquadramentoViolacaoFisica(int[] quadro, int tipoDeCodificacao) {
-    // *** MUDANCA AQUI: Removemos a logica que pega o controller e descobre a codificacao
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
     
     final int VIOLACAO = 0b1111;

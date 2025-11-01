@@ -1,7 +1,8 @@
-/***************************************************************** * Autor............: Lucas de Menezes Chaves
+/***************************************************************** 
+* Autor............: Lucas de Menezes Chaves
 * Matricula........: 202310282
 * Inicio...........: 18/08/2025
-* Ultima alteracao.: 29/08/2025
+* Ultima alteracao.: 31/10/2025
 * Nome.............: TelaPrincipalController
 * Funcao...........: Faz a mediacao entre codigo e GUI, controlando o que deve ser feito quando acontecer alguma acao na interface
 *************************************************************** */
@@ -157,7 +158,7 @@ public class TelaPrincipalController {
   } // fim do metodo
 
   /**************************************************************
-  * Metodo: desenharSinalTransmissao
+  * Metodo: drawSignal
   * Funcao: realiza a animacao da onda quadrada para simular a transmissao de bits
   * @param bits | bits a serem transmitidos (um bit por posicao do array)
   * @return void

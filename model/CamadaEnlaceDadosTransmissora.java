@@ -2,7 +2,7 @@
 * Autor..............: Lucas de Menezes Chaves
 * Matricula........: 202310282
 * Inicio...........: 16/09/2025
-* Ultima alteracao.: 27/09/2025
+* Ultima alteracao.: 31/10/2025
 * Nome.............: CamadaEnlaceDadosTransmissora
 * Funcao...........: Transfere a mensagem enquadrada para camada fisica transmissora
 *************************************************************** */
@@ -32,7 +32,7 @@ public class CamadaEnlaceDadosTransmissora {
 
     // 2. Avisa o controller o numero de subquadros que ele deve esperar
     controller.setSubquadrosEsperados(subquadrosAtivos);
-    // --- FIM DA MUDANCA ---
+    
     for(int i = 0; i < quadro.length; i++) {
       if(quadro[i] == 0) continue;
       final int[] subquadroPayload = new int[] { quadro[i] };
@@ -51,10 +51,10 @@ public class CamadaEnlaceDadosTransmissora {
     } // fim do for threads
   } //Fim do metodo
   /**************************************************************
-  * Metodo: CamadaDeEnlaceTrasnmissoraEnquadramento
+  * Metodo: CamadaDeEnlaceTransmissoraEnquadramento
   * Funcao: enquadra os bits e passa eles para camada seguinte
   * @param quadro | bits recebidos
-  * @return quadroEnquadrado 
+  * @return int[] | quadroEnquadrado 
   * ********************************************************* */
   public static int[] CamadaDeEnlaceTransmissoraEnquadramento(int[] quadro) {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
@@ -83,10 +83,10 @@ public class CamadaEnlaceDadosTransmissora {
     return quadroEnquadrado;
   } // Fim do metodo
   /**************************************************************
-  * Metodo: CamadaDeEnlaceTrasnmissoraControleDeErro
+  * Metodo: CamadaDeEnlaceTransmissoraControleDeErro
   * Funcao: faz o controle de erros dos bits e passa eles para camada seguinte
   * @param quadro | bits recebidos
-  * @return void 
+  * @return int[] | quadro controlado
   * ********************************************************* */
   public static int[] CamadaDeEnlaceTransmissoraControleDeErro(int[] quadro) {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
@@ -115,19 +115,19 @@ public class CamadaEnlaceDadosTransmissora {
     return quadroControlado;
   } //Fim do metodo
   /**************************************************************
-  * Metodo: CamadaDeEnlaceTrasnmissoraControleDeFluxo
+  * Metodo: CamadaDeEnlaceTransmissoraControleDeFluxo
   * Funcao: faz o controle de fluxo dos bits e passa eles para camada seguinte
   * @param quadro | bits recebidos
-  * @return void 
+  * @return int[] | quadro 
   * ********************************************************* */
   public static int[] CamadaDeEnlaceTransmissoraControleDeFluxo(int[] quadro) {
     return quadro;
   } //Fim do metodo
   /**************************************************************
-  * Metodo: CamadaDeEnlaceTrasnmissoraEnquadramentoContagemDeCaracteres
+  * Metodo: CamadaDeEnlaceTransmissoraEnquadramentoContagemDeCaracteres
   * Funcao: enquadra os bits (Contagem de Caracteres) e passa eles para camada seguinte
   * @param quadro | bits recebidos
-  * @return quadroEnquadrado 
+  * @return int[] | quadroEnquadrado 
   * ********************************************************* */
   public static int[] CamadaDeEnlaceTransmissoraEnquadramentoContagemDeCaracteres(int[] quadro) {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
@@ -161,10 +161,10 @@ public class CamadaEnlaceDadosTransmissora {
     return quadroEnquadrado; //retorno da funcao
   } // fim do metodo
   /**************************************************************
-  * Metodo: CamadaDeEnlaceTrasnmissoraEnquadramentoInsercaoDeBytes
+  * Metodo: CamadaDeEnlaceTransmissoraEnquadramentoInsercaoDeBytes
   * Funcao: enquadra os bits (Insercao de Bytes) e passa eles para camada seguinte
   * @param quadro | bits recebidos
-  * @return quadro 
+  * @return int[] | quadro 
   * ********************************************************* */
   public static int[] CamadaDeEnlaceTransmissoraEnquadramentoInsercaoDeBytes(int[] quadro) {
     final int FLAG = 0b01111110; // ~ em ASCII
@@ -266,10 +266,10 @@ public class CamadaEnlaceDadosTransmissora {
     return quadroEnquadrado; // retorno da funcao
   } //Fim do metodo
   /**************************************************************
-  * Metodo: CamadaDeEnlaceTrasnmissoraEnquadramentoInsercaoDeBits
+  * Metodo: CamadaDeEnlaceTransmissoraEnquadramentoInsercaoDeBits
   * Funcao: enquadra os bits (Insercao de Bits) com flags a cada 32 bits e passa para a proxima camada
   * @param quadro | bits recebidos
-  * @return quadroEnquadrado 
+  * @return int[] | quadroEnquadrado 
   * ********************************************************* */
   public static int[] CamadaDeEnlaceTransmissoraEnquadramentoInsercaoDeBits(int[] quadro) {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
@@ -341,19 +341,19 @@ public class CamadaEnlaceDadosTransmissora {
     return quadroEnquadrado;
   } // fim do metodo
   /**************************************************************
-  * Metodo: CamadaDeEnlaceTrasnmissoraEnquadramentoViolacaoCamadaFisica
+  * Metodo: CamadaDeEnlaceTransmissoraEnquadramentoViolacaoCamadaFisica
   * Funcao: enquadra os bits (Violacao da Camada Fisica) e passa eles para camada seguinte
   * @param quadro | bits recebidos
-  * @return quadro 
+  * @return int[] | quadro 
   * ********************************************************* */
   public static int[] CamadaDeEnlaceTransmissoraEnquadramentoViolacaoCamadaFisica(int[] quadro) {
     return quadro;
   } // Fim do metodo
   /**************************************************************
   * Metodo: CamadadeEnlaceTransmissoraControleDeErroBitParidadePar
-  * Funcao: adiciona cargas de controle aos bits para ficarem aparentemente livres de erro, ou pelo menos controladas  e passam para proxima camada
+  * Funcao: adiciona cargas de controle aos bits para ficarem aparentemente livres de erro, ou pelo menos controladas e passam para proxima camada
   * @param quadro | bits recebidos
-  * @return quadro 
+  * @return int[] | quadro 
   * ********************************************************* */
   public static int[] CamadadeEnlaceTransmissoraControleDeErroBitParidadePar(int[] quadro) {
     // Cria uma instancia das funcoes auxiliares
@@ -410,9 +410,9 @@ public class CamadaEnlaceDadosTransmissora {
   } //fim do metodo
   /**************************************************************
   * Metodo: CamadadeEnlaceTransmissoraControleDeErroBitParidadeImpar
-  * Funcao: adiciona cargas de controle aos bits para ficarem aparentemente livres de erro, ou pelo menos controladas  e passam para proxima camada
+  * Funcao: adiciona cargas de controle aos bits para ficarem aparentemente livres de erro, ou pelo menos controladas e passam para proxima camada
   * @param quadro | bits recebidos
-  * @return quadro 
+  * @return int[] | quadro 
   * ********************************************************* */
   public static int[] CamadadeEnlaceTransmissoraControleDeErroBitParidadeImpar(int[] quadro) {
     // Cria uma instancia das funcoes auxiliares
@@ -469,15 +469,15 @@ public class CamadaEnlaceDadosTransmissora {
   } // fim do metodo
   /**************************************************************
   * Metodo: CamadadeEnlaceTransmissoraControleDeErroCRC
-  * Funcao: adiciona cargas de controle aos bits para ficarem aparentemente livres de erro, ou pelo menos controladas  e passam para proxima camada
+  * Funcao: adiciona cargas de controle aos bits para ficarem aparentemente livres de erro, ou pelo menos controladas e passam para proxima camada
   * @param quadro | bits recebidos
-  * @return quadro 
+  * @return int[] | quadro 
   * ********************************************************* */
   public static int[] CamadadeEnlaceTransmissoraControleDeErroCRC(int[] quadro) {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
     int totalBits = quadro.length * 32;
 
-    // 1. Calcular o CRC baseado no pseudocodigo
+    // 1. Calcular o CRC
     final int POLY = 0x04C11DB7;
     final int INIT = 0xFFFFFFFF;
     final int XOROUT = 0xFFFFFFFF;
@@ -527,7 +527,7 @@ public class CamadaEnlaceDadosTransmissora {
   * Metodo: CamadadeEnlaceTransmissoraControleDeErroCodigoDeHamming
   * Funcao: adiciona cargas de controle aos bits para ficarem aparentemente livres de erro, ou pelo menos controladas e passam para proxima camada
   * @param quadro | bits recebidos
-  * @return quadro 
+  * @return int[] | quadro 
   * ********************************************************* */
   public static int[] CamadadeEnlaceTransmissoraControleDeErroCodigoDeHamming(int[] quadro) {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();

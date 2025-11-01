@@ -1,7 +1,7 @@
 /***************************************************************** * Autor..............: Lucas de Menezes Chaves
 * Matricula........: 202310282
 * Inicio...........: 16/09/2025
-* Ultima alteracao.: 27/09/2025
+* Ultima alteracao.: 31/10/2025
 * Nome.............: CamadaEnlaceDadosReceptora
 * Funcao...........: Transfere a mensagem decodificada e desenquadrada para camada aplicacao receptora
 *************************************************************** */
@@ -18,6 +18,7 @@ public class CamadaEnlaceDadosReceptora {
   * Metodo: CamadaEnlaceDadosReceptora
   * Funcao: desenquadra os bits e passa eles para camada seguinte
   * @param quadro | bits recebidos
+  * @param transmissor | objeto da camada fisica transmissora
   * @return void 
   * ********************************************************* */
   public CamadaEnlaceDadosReceptora(int[] quadro, CamadaFisicaTransmissora transmissor) {
@@ -36,7 +37,7 @@ public class CamadaEnlaceDadosReceptora {
   * Metodo: CamadaDeEnlaceReceptoraEnquadramento
   * Funcao: desenquadra os bits e passa eles para camada seguinte
   * @param quadro | bits recebidos
-  * @return quadroEnquadrado 
+  * @return int[] | quadroDesenquadrado 
   * ********************************************************* */
   public static int[] CamadaDeEnlaceReceptoraEnquadramento(int[] quadro) {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
@@ -68,7 +69,8 @@ public class CamadaEnlaceDadosReceptora {
   * Metodo: CamadaDeEnlaceReceptoraControleDeErro
   * Funcao: faz o controle de erros dos bits e passa eles para camada seguinte
   * @param quadro | bits recebidos
-  * @return void 
+  * @param transmissor | objeto da camada fisica transmissora
+  * @return int[] | quadro controlado (ou null se houver erro)
   * ********************************************************* */
   public static int[] CamadaDeEnlaceReceptoraControleDeErro(int[] quadro, CamadaFisicaTransmissora transmissor) {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
@@ -100,7 +102,7 @@ public class CamadaEnlaceDadosReceptora {
   * Metodo: CamadaDeEnlaceReceptoraControleDeFluxo
   * Funcao: faz o controle de fluxo dos bits e passa eles para camada seguinte
   * @param quadro | bits recebidos
-  * @return void 
+  * @return int[] | quadro 
   * ********************************************************* */
   public static int[] CamadaDeEnlaceReceptoraControleDeFluxo(int[] quadro) {
     return quadro;
@@ -109,7 +111,7 @@ public class CamadaEnlaceDadosReceptora {
   * Metodo: CamadaDeEnlaceReceptoraEnquadramentoContagemDeCaracteres
   * Funcao: desenquadra os bits (Contagem de Caracteres) e passa eles para camada seguinte
   * @param quadro | bits recebidos
-  * @return quadroDesenquadrado
+  * @return int[] | quadroDesenquadrado
   * ********************************************************* */
   public static int[] CamadaDeEnlaceReceptoraEnquadramentoContagemDeCaracteres(int[] quadro) {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
@@ -163,7 +165,7 @@ public class CamadaEnlaceDadosReceptora {
   * Metodo: CamadaDeEnlaceReceptoraEnquadramentoInsercaoDeBytes
   * Funcao: desenquadra os bits (Insercao de Bytes) e passa eles para camada seguinte
   * @param quadro | bits recebidos
-  * @return quadro 
+  * @return int[] | quadro 
   * ********************************************************* */
   public static int[] CamadaDeEnlaceReceptoraEnquadramentoInsercaoDeBytes(int[] quadro) {
     final int FLAG = 0b01111110; // ~ em ASCII
@@ -183,7 +185,7 @@ public class CamadaEnlaceDadosReceptora {
 
     // Primeira Passada: Calcula o tamanho exato da carga util para criar um array do tamanho correto
     int tamanhoCargaUtil = 0;
-    // *** INICIO DA CORRECAO ***
+    
     boolean frameIniciado = false;
     for (int i = 0; i < totalBytes; i++) {
         int byteAtual = bytesRecebidos[i];
@@ -199,7 +201,7 @@ public class CamadaEnlaceDadosReceptora {
         }
         
         if (!frameIniciado) continue; // Ignora lixo antes da flag inicial
-        // *** FIM DA CORRECAO ***
+        
 
         // Se for um ESCAPE, o proximo byte eh o de dados.
         if (byteAtual == ESC) {
@@ -211,7 +213,7 @@ public class CamadaEnlaceDadosReceptora {
     // Segunda Passada: Cria o array final e o preenche com os dados corretos
     int[] cargaUtil = new int[tamanhoCargaUtil];
     int indiceCargaUtil = 0;
-    // *** INICIO DA CORRECAO ***
+    
     frameIniciado = false; // Reseta o estado
     // for para percorrer tudo
     for (int i = 0; i < totalBytes && indiceCargaUtil < tamanhoCargaUtil; i++) {
@@ -228,7 +230,7 @@ public class CamadaEnlaceDadosReceptora {
         }
         
         if (!frameIniciado) continue; // Ignora lixo antes da flag inicial
-        // *** FIM DA CORRECAO ***
+        
 
         // if para verificar se eh um esc
         if (byteAtual == ESC) {
@@ -266,7 +268,7 @@ public class CamadaEnlaceDadosReceptora {
   * Metodo: CamadaDeEnlaceReceptoraEnquadramentoInsercaoDeBits
   * Funcao: desenquadra os bits (Insercao de Bits) que contem flags intermediarias
   * @param quadro | bits recebidos
-  * @return quadroDesenquadrado | o quadro com os bits ja desenquadrados
+  * @return int[] | o quadro com os bits ja desenquadrados
   * ********************************************************* */
   public static int[] CamadaDeEnlaceReceptoraEnquadramentoInsercaoDeBits(int[] quadro) {
       FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
@@ -287,11 +289,11 @@ public class CamadaEnlaceDadosReceptora {
           if(ponteiroLeitura + 8 <= tamanhoTotalBitsRecebidos) {
               int possivelFlag = auxiliar.lerBits(quadro, ponteiroLeitura, 8);
               if (possivelFlag == FLAG) {
-                  // *** INICIO DA CORRECAO ***
+                  
                   // A FLAG inicial ja foi pulada (ponteiroLeitura = 8).
                   // Qualquer outra flag encontrada eh a FLAG FINAL.
                   break; // Para o loop, ignorando o padding.
-                  // *** FIM DA CORRECAO ***
+                  
               }
           }
           
@@ -319,7 +321,7 @@ public class CamadaEnlaceDadosReceptora {
   * Metodo: CamadaDeEnlaceReceptoraEnquadramentoViolacaoCamadaFisica
   * Funcao: desenquadra os bits (Violacao da Camada Fisica) e passa eles para camada seguinte
   * @param quadro | bits recebidos
-  * @return quadro 
+  * @return int[] | quadro 
   * ********************************************************* */
   public static int[] CamadaDeEnlaceReceptoraEnquadramentoViolacaoCamadaFisica(int[] quadro) {
     return quadro;
@@ -328,7 +330,8 @@ public class CamadaEnlaceDadosReceptora {
   * Metodo: CamadadeEnlaceReceptoraControleDeErroBitParidadePar
   * Funcao: adiciona cargas de controle aos bits para ficarem aparentemente livres de erro e passam para proxima camada
   * @param quadro | bits recebidos
-  * @return quadro 
+  * @param transmissor | objeto da camada fisica transmissora
+  * @return int[] | quadro 
   * ********************************************************* */
   public static int[] CamadadeEnlaceReceptoraControleDeErroBitParidadePar(int[] quadro, CamadaFisicaTransmissora transmissor) {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
@@ -347,27 +350,27 @@ public class CamadaEnlaceDadosReceptora {
       return quadro;
     }
 
-    // 2. inicializar contador de um
+    // inicializar contador de um
     int contadorDeUns = 0;
 
-    // 3. percorrer quadro recebido[]
-    // 4. para cada 1 em quadro recebido[]
+    // percorrer quadro recebido[]
+    // para cada 1 em quadro recebido[]
     for (int i = 0; i < totalBitsRecebidos; i++) {
       if (auxiliar.lerBits(quadro, i, 1) == 1) {
-        contadorDeUns++; // 5. contador de um ++
+        contadorDeUns++; // contador de um ++
       }
-    } // 6. fim do para cada
+    } // fim do para cada
 
     System.out.println(contadorDeUns);
 
-    // 7. se contador de um % 2 != 0 (impar, indica erro)
+    // se contador de um % 2 != 0 (impar, indica erro)
     if (contadorDeUns % 2 != 0) { 
-      // 9. alerta(houve um erro de paridade)
+      // alerta(houve um erro de paridade)
       javafx.application.Platform.runLater(() -> {
         Alert alert = new Alert(AlertType.ERROR);
-        alert.setTitle("Erro de Transmissão");
+        alert.setTitle("Erro de Transmissao");
         alert.setHeaderText("Erro de Paridade Detectado");
-        alert.setContentText("Um erro foi detectado nos dados recebidos! O controle de paridade par falhou (a contagem de bits '1' é ímpar), quadro descartado.");
+        alert.setContentText("Um erro foi detectado nos dados recebidos! O controle de paridade par falhou (a contagem de bits '1' e impar), quadro descartado.");
         
         alert.show();
       });
@@ -376,11 +379,11 @@ public class CamadaEnlaceDadosReceptora {
     } else {
       enviarAck(transmissor);
     }
-    // 10. fim do se
+    // fim do se
 
     // Agora, removemos o bit de paridade para passar apenas os dados
     
-    // 1. inicializar quadro controlado
+    // inicializar quadro controlado
     // O quadro de dados real eh 1 bit menor que o quadro recebido
     int totalBitsDeDados = totalBitsRecebidos - 1;
 
@@ -393,22 +396,23 @@ public class CamadaEnlaceDadosReceptora {
     int tamanhoNovoArray = (totalBitsDeDados + 31) / 32;
     int[] quadroControlado = new int[tamanhoNovoArray];
 
-    // 11. remover quadrorecebido[ultima posicao]
-    // 12. quadro controlado = quadro recebido
+    // remover quadrorecebido[ultima posicao]
+    // quadro controlado = quadro recebido
     // (Isso eh feito copiando todos os bits, *exceto* o ultimo)
     for (int i = 0; i < totalBitsDeDados; i++) {
       int bit = auxiliar.lerBits(quadro, i, 1);
       auxiliar.escreverBits(quadroControlado, i, bit, 1);
     }
 
-    // 13. retorne quadro controlado
+    // retorne quadro controlado
     return quadroControlado;
   } //fim do metodo
   /**************************************************************
   * Metodo: CamadadeEnlaceReceptoraControleDeErroBitParidadeImpar
   * Funcao: adiciona cargas de controle aos bits para ficarem aparentemente livres de erro e passam para proxima camada
   * @param quadro | bits recebidos
-  * @return quadro 
+  * @param transmissor | objeto da camada fisica transmissora
+  * @return int[] | quadro 
   * ********************************************************* */
   public static int[] CamadadeEnlaceReceptoraControleDeErroBitParidadeImpar(int[] quadro, CamadaFisicaTransmissora transmissor) {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
@@ -421,27 +425,27 @@ public class CamadaEnlaceDadosReceptora {
       return quadro;
     }
 
-    // 2. inicializar contador de um
+    // inicializar contador de um
     int contadorDeUns = 0;
 
-    // 3. percorrer quadro recebido[]
-    // 4. para cada 1 em quadro recebido[]
+    // percorrer quadro recebido[]
+    // para cada 1 em quadro recebido[]
     for (int i = 0; i < totalBitsRecebidos; i++) {
       if (auxiliar.lerBits(quadro, i, 1) == 1) {
-        contadorDeUns++; // 5. contador de um ++
+        contadorDeUns++; // contador de um ++
       }
-    } // 6. fim do para cada
+    } // fim do para cada
 
     System.out.println(contadorDeUns);
 
-    // 7. se contador de um % 2 == 0 (par, indica erro)
+    // se contador de um % 2 == 0 (par, indica erro)
     if (contadorDeUns % 2 == 0) {
-      // 9. alerta(houve um erro de paridade)
+      // alerta(houve um erro de paridade)
       javafx.application.Platform.runLater(() -> {
         Alert alert = new Alert(AlertType.ERROR);
-        alert.setTitle("Erro de Transmissão");
+        alert.setTitle("Erro de Transmissao");
         alert.setHeaderText("Erro de Paridade Detectado");
-        alert.setContentText("Um erro foi detectado nos dados recebidos! O controle de paridade impar falhou (a contagem de bits '1' é par), quadro descartado.");
+        alert.setContentText("Um erro foi detectado nos dados recebidos! O controle de paridade impar falhou (a contagem de bits '1' e par), quadro descartado.");
         
         alert.show();
       });
@@ -450,12 +454,12 @@ public class CamadaEnlaceDadosReceptora {
     } else {
       enviarAck(transmissor);
     }
-    // 8. nao houve erro (Nao faz nada, conforme solicitado)
-    // 10. fim do se
+    // nao houve erro (Nao faz nada, conforme solicitado)
+    // fim do se
 
     // Agora, removemos o bit de paridade para passar apenas os dados
     
-    // 1. inicializar quadro controlado
+    // inicializar quadro controlado
     // O quadro de dados real eh 1 bit menor que o quadro recebido
     int totalBitsDeDados = totalBitsRecebidos - 1;
 
@@ -468,22 +472,23 @@ public class CamadaEnlaceDadosReceptora {
     int tamanhoNovoArray = (totalBitsDeDados + 31) / 32;
     int[] quadroControlado = new int[tamanhoNovoArray];
 
-    // 11. remover quadrorecebido[ultima posicao]
-    // 12. quadro controlado = quadro recebido
+    // remover quadrorecebido[ultima posicao]
+    // quadro controlado = quadro recebido
     // (Isso eh feito copiando todos os bits, *exceto* o ultimo)
     for (int i = 0; i < totalBitsDeDados; i++) {
       int bit = auxiliar.lerBits(quadro, i, 1);
       auxiliar.escreverBits(quadroControlado, i, bit, 1);
     }
 
-    // 13. retorne quadro controlado
+    // retorne quadro controlado
     return quadroControlado;
   } // fim do metodo
   /**************************************************************
   * Metodo: CamadadeEnlaceReceptoraControleDeErroCRC
   * Funcao: adiciona cargas de controle aos bits para ficarem aparentemente livres de erro e passam para proxima camada
   * @param quadro | bits recebidos
-  * @return quadro 
+  * @param transmissor | objeto da camada fisica transmissora
+  * @return int[] | quadro 
   * ********************************************************* */
   public static int[] CamadadeEnlaceReceptoraControleDeErroCRC(int[] quadro, CamadaFisicaTransmissora transmissor) {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
@@ -495,9 +500,9 @@ public class CamadaEnlaceDadosReceptora {
         // Frame muito curto para conter CRC, considera erro ou frame vazio
         if(totalBitsRecebidos > 0) {
           Alert alert = new Alert(AlertType.ERROR);
-          alert.setTitle("Erro de Transmissão");
+          alert.setTitle("Erro de Transmissao");
           alert.setHeaderText("Erro de CRC Detectado");
-          alert.setContentText("Quadro recebido é menor que o proprio CRC.");
+          alert.setContentText("Quadro recebido e menor que o proprio CRC.");
           alert.show(); 
         }
         return new int[0]; // Retorna vazio
@@ -505,7 +510,7 @@ public class CamadaEnlaceDadosReceptora {
 
     int totalBitsDeDados = totalBitsRecebidos - 32;
 
-    // 1. Calcular o CRC com base APENAS nos dados recebidos
+    // Calcular o CRC com base APENAS nos dados recebidos
     final int POLY = 0x04C11DB7;
     final int INIT = 0xFFFFFFFF;
     final int XOROUT = 0xFFFFFFFF;
@@ -534,13 +539,13 @@ public class CamadaEnlaceDadosReceptora {
 
     int crcCalculado = reg ^ XOROUT;
 
-    // 2. Ler o CRC que foi anexado no final do quadro
+    // Ler o CRC que foi anexado no final do quadro
     int crcRecebido = auxiliar.lerBits(quadro, totalBitsDeDados, 32);
 
     if (crcCalculado != crcRecebido) {
         javafx.application.Platform.runLater(() -> {
           Alert alert = new Alert(AlertType.ERROR);
-          alert.setTitle("Erro de Transmissão");
+          alert.setTitle("Erro de Transmissao");
           alert.setHeaderText("Erro de CRC Detectado");
           
           // Correcao para StringBuilder
@@ -558,7 +563,7 @@ public class CamadaEnlaceDadosReceptora {
       enviarAck(transmissor);
     }
 
-    // 4. Remover o CRC e retornar apenas os dados
+    // Remover o CRC e retornar apenas os dados
     if (totalBitsDeDados == 0) {
         return new int[0]; // Nao havia dados, apenas CRC
     }
@@ -578,7 +583,8 @@ public class CamadaEnlaceDadosReceptora {
   * Metodo: CamadadeEnlaceReceptoraControleDeErroCodigoDeHamming
   * Funcao: adiciona cargas de controle aos bits para ficarem aparentemente livres de erro e passam para proxima camada
   * @param quadro | bits recebidos
-  * @return quadro 
+  * @param transmissor | objeto da camada fisica transmissora
+  * @return int[] | quadro 
   * ********************************************************* */
   public static int[] CamadadeEnlaceReceptoraControleDeErroCodigoDeHamming(int[] quadro, CamadaFisicaTransmissora transmissor) {
     FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
@@ -588,28 +594,24 @@ public class CamadaEnlaceDadosReceptora {
       return new int[0];
     }
 
-    // 1. Calcular a Sindrome (baseado no pseudocodigo)
+    // Calcular a Sindrome
     int syndrome = 0;
     int posParidade = 1;
 
     // 'r' eh o numero de bits de paridade, precisamos conta-los
     int r = 0; 
     
-    // WHILE pos_paridade <= N
     while (posParidade <= N) {
       r++; // Conta quantos bits de paridade existem
       int soma = 0;
 
-      // FOR i FROM 1 TO N
       for (int i = 1; i <= N; i++) {
-        // IF (i AND pos_paridade) != 0
         if ((i & posParidade) != 0) {
           int bit = auxiliar.lerBits(quadro, i - 1, 1); // Le da posicao 0-based
-          soma = soma ^ bit; // soma = soma XOR received_bits[i]
+          soma = soma ^ bit; 
         }
       }
 
-      // IF soma != 0
       if (soma != 0) {
         syndrome = syndrome + posParidade; // Marca a paridade que falhou
       }
@@ -617,18 +619,18 @@ public class CamadaEnlaceDadosReceptora {
       posParidade = posParidade * 2; // Proximo bit de paridade
     }
 
-    // 3) Analisar a sindrome
+    // Analisar a sindrome
     if (syndrome != 0) {
       final int syndromeFinal = syndrome;
       javafx.application.Platform.runLater(() -> {
         Alert alert = new Alert(AlertType.ERROR);
-        alert.setTitle("Erro de Transmissão");
+        alert.setTitle("Erro de Transmissao");
         alert.setHeaderText("Erro de Hamming Detectado!");
 
         StringBuilder sb = new StringBuilder();
         sb.append("Um erro foi detectado nos dados recebidos!\n");
-        sb.append("A verificação de Hamming vai corrigir os erros.\n");
-        sb.append("Posição do erro (Síndrome): ").append(syndromeFinal);
+        sb.append("A verificacao de Hamming vai descartar o quadro.\n");
+        sb.append("Posicao do erro (Sindrome): ").append(syndromeFinal);
         
         alert.setContentText(sb.toString());
         alert.show();
@@ -641,7 +643,7 @@ public class CamadaEnlaceDadosReceptora {
       enviarAck(transmissor);
     }
 
-    // 4. Extrair os bits de dados originais (remover os bits de paridade)
+    // Extrair os bits de dados originais (remover os bits de paridade)
     int totalDataBits = N - r;
     if (totalDataBits <= 0) {
       return new int[0];
@@ -668,7 +670,7 @@ public class CamadaEnlaceDadosReceptora {
     /**************************************************************
   * Metodo: enviarAck 
   * Funcao: Rota de retorno para o ACK. Chamado pelo receptor.
-  * @param ackQuadro | O quadro de ACK
+  * @param transmissor | O objeto transmissor para enviar o ACK
   * @return void 
   * ********************************************************* */
   public static void enviarAck(CamadaFisicaTransmissora transmissor) {
