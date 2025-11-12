@@ -55,6 +55,9 @@ public class TelaPrincipalController {
   private ComboBox<String> comboBoxControleErro; // Declara a variavel responsavel pelos algoritmos de controle de erro
 
   @FXML
+  private ComboBox<String> comboBoxFluxo; // Declara a variavel responsavel pelos algoritmos de controle de fluxo
+
+  @FXML
   private Canvas canvasAnimacao; // canvas para a animacao
 
   private AnimationTimer animation; // animacao
@@ -79,6 +82,8 @@ public class TelaPrincipalController {
     comboBoxErro.getSelectionModel().selectFirst(); // Deixa o primeiro item ja selecionado
     comboBoxControleErro.getItems().addAll("Bit de Paridade par", "Bit de paridade impar", "CRC", "Codigo de Hamming"); // adiciona as opcoes ao combobox
     comboBoxControleErro.getSelectionModel().selectFirst(); // deixa o primeiro item ja selecionado
+    comboBoxFluxo.getItems().addAll("Janela deslizante 1 bit", "Go Back N", "Retransmissão Seletiva"); // adiciona as opcoes a combobox
+    comboBoxFluxo.getSelectionModel().selectFirst(); // deixa o primeiro item já selecionado
   } // Fim do metodo
 
   /**************************************************************
@@ -304,6 +309,16 @@ public class TelaPrincipalController {
     public String getControleErro()
   {
     return comboBoxControleErro.getValue(); // retorno da funcao
+  } // Fim do metodo
+  /****************************************************************
+  * Metodo: getControleFluxo
+  * Funcao: retorna o valor do combo box para escolher o algoritmo de controle de fluxo
+  * @param void
+  * @return String | o metodo de codificacao escolhido
+  * ********************************************************* */
+    public String getControleFluxo()
+  {
+    return comboBoxFluxo.getValue(); // retorno da funcao
   } // Fim do metodo
   /****************************************************************
   * Metodo: getEnquadramento

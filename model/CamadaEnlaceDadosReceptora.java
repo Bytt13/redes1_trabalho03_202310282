@@ -98,15 +98,63 @@ public class CamadaEnlaceDadosReceptora {
 
     return quadroControlado;
   } // Fim do metodo
-  /**************************************************************
-  * Metodo: CamadaDeEnlaceReceptoraControleDeFluxo
+/**************************************************************
+  * Metodo: CamadaDeEnlaceTransmissoraControleDeFluxo
   * Funcao: faz o controle de fluxo dos bits e passa eles para camada seguinte
   * @param quadro | bits recebidos
   * @return int[] | quadro 
   * ********************************************************* */
   public static int[] CamadaDeEnlaceReceptoraControleDeFluxo(int[] quadro) {
+    FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
+    TelaPrincipalController controller = TelaPrincipalController.getController();
+    int tipoDeFluxo = auxiliar.controlCodification(controller.getControleFluxo()); // pega o controle de erro escolhido
+    int[] quadroComFluxo; // quadro depois de passar pelo controle de erros
+    //switch para pegar o controle de erro 
+    switch(tipoDeFluxo) {
+      case 0: //bit de paridade par
+        quadroComFluxo = CamadaEnlaceDadosReceptoraJanelaDeslizanteUmBit(quadro);
+        break;
+      case 1: //bit de paridade impar
+        quadroComFluxo = CamadaEnlaceDadosReceptoraJanelaDeslizanteGoBackN(quadro);
+        break;
+      case 2: //CRC
+        quadroComFluxo = CamadaEnlaceDadosReceptoraJanelaDeslizanteComRetransmissaoSeletiva(quadro);
+        break;
+      default:
+        quadroComFluxo = CamadaEnlaceDadosReceptoraJanelaDeslizanteUmBit(quadro);
+        break;
+    } // Fim do switch
+
+    return quadroComFluxo;
+  } //Fim do metodo
+
+  /**************************************************************
+  * Metodo: CamadaEnlaceDadosTransmissoraJanelaDeslizanteUmBit
+  * Funcao: controla o fluxo da mensagem
+  * @param quadro | bits recebidos
+  * @return int[] | quadro com fluxo 
+  * ********************************************************* */
+  public static int[] CamadaEnlaceDadosReceptoraJanelaDeslizanteUmBit(int[] quadro) {
     return quadro;
-  } // Fim do metodo
+  } // fim do metodo
+  /**************************************************************
+  * Metodo: CamadaEnlaceDadosTransmissoraJanelaDeslizanteUmBit
+  * Funcao: controla o fluxo da mensagem
+  * @param quadro | bits recebidos
+  * @return int[] | quadro com fluxo 
+  * ********************************************************* */
+  public static int[] CamadaEnlaceDadosReceptoraJanelaDeslizanteGoBackN(int[] quadro) {
+    return quadro;
+  } // fim do metodo
+  /**************************************************************
+  * Metodo: CamadaEnlaceDadosTransmissoraJanelaDeslizanteUmBit
+  * Funcao: controla o fluxo da mensagem
+  * @param quadro | bits recebidos
+  * @return int[] | quadro com fluxo 
+  * ********************************************************* */
+  public static int[] CamadaEnlaceDadosReceptoraJanelaDeslizanteComRetransmissaoSeletiva(int[] quadro) {
+    return quadro;
+  } // fim do metodo
  /**************************************************************
   * Metodo: CamadaDeEnlaceReceptoraEnquadramentoContagemDeCaracteres
   * Funcao: desenquadra os bits (Contagem de Caracteres) e passa eles para camada seguinte
