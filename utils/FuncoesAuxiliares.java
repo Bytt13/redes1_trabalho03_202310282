@@ -331,4 +331,82 @@ public int lerBits(int[] array, int posInicialBit, int numBits) {
     }
     return number; // Retorno do numero correspondente
   } // Fim do metodo
+
+  /**************************************************************
+  * Metodo: controlCodification
+  * Funcao: transforma o tipo de controle escolhido em numero
+  * @param subquadro | subquadro passado
+  * @param numseq | numero de sequencia
+  * @return int | numero correspondente
+  * ********************************************************* */
+  public int[] ordenarQuadro(int[] subquadro, int numseq) {
+    // 1. Descobrir o tamanho real (em bits) do subquadro recebido.
+    // Usamos 'this' para chamar outro metodo da mesma classe.
+    int totalBitsDados = this.descobrirTotalDeBitsReais(subquadro);
+
+    // 2. Definir o tamanho do novo quadro.
+    final int TAMANHO_CABECALHO_BITS = 8;
+    int novoTotalBits = TAMANHO_CABECALHO_BITS + totalBitsDados;
+
+    // 3. Alocar o novo array de inteiros.
+    int novoTamanhoInts = (novoTotalBits + 31) / 32;
+    int[] quadroOrdenado = new int[novoTamanhoInts];
+
+    // 4. Escrever o cabecalho (numero de sequencia) de 8 bits.
+    // Escreve o 'numseq' na posicao 0, usando 8 bits.
+    // Validamos para garantir que o numseq nao estoure 8 bits (0-255)
+    this.escreverBits(quadroOrdenado, 0, numseq & 0xFF, TAMANHO_CABECALHO_BITS);
+
+    // 5. Copiar os bits de dados do subquadro original para o novo quadro.
+    // Comecamos a escrever na posicao 8.
+    for (int i = 0; i < totalBitsDados; i++) {
+        // Le o bit 'i' do subquadro
+        int bit = this.lerBits(subquadro, i, 1);
+        // Escreve o bit 'i' na posicao do novo quadro
+        this.escreverBits(quadroOrdenado, i + TAMANHO_CABECALHO_BITS, bit, 1);
+    }
+
+    // 6. Retornar o novo quadro (Cabecalho + Dados).
+    return quadroOrdenado;
+  } // fim do metodo
+
+  public int[] organizarQuadro(int[] quadro) {
+    FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
+    // 1. Descobrir o tamanho total do quadro recebido.
+    int totalBitsRecebidos = auxiliar.descobrirTotalDeBitsReais(quadro);
+    final int TAMANHO_CABECALHO_BITS = 8;
+
+    // 2. Validar se o quadro tem pelo menos o tamanho do cabecalho.
+    if (totalBitsRecebidos < TAMANHO_CABECALHO_BITS) {
+      System.out.println("Erro de Fluxo: Quadro recebido menor que o cabecalho de sequencia.");
+      return new int[0]; // Retorna um quadro vazio
+    }
+
+    // 3. Ler o numero de sequencia (os 8 primeiros bits).
+    int numSeq = auxiliar.lerBits(quadro, 0, TAMANHO_CABECALHO_BITS);
+    
+    // Log para depuracao (opcional)
+    System.out.println("[FLUXO RX] Recebido quadro com SeqNum = ");
+    System.out.println(numSeq);
+
+    // 4. Calcular o tamanho do quadro de dados (payload).
+    int totalBitsDados = totalBitsRecebidos - TAMANHO_CABECALHO_BITS;
+    if (totalBitsDados <= 0) {
+      return new int[0]; // Nao ha dados, apenas cabecalho
+    }
+
+    // 5. Alocar o novo array para os dados.
+    int novoTamanhoInts = (totalBitsDados + 31) / 32;
+    int[] quadroPayload = new int[novoTamanhoInts];
+
+    // 6. Copiar os bits de dados (pulando o cabecalho).
+    for (int i = 0; i < totalBitsDados; i++) {
+        // Le o bit da posicao 'i + 8' do quadro original
+        int bit = auxiliar.lerBits(quadro, i + TAMANHO_CABECALHO_BITS, 1);
+        // Escreve o bit na posicao 'i' do novo quadro (payload)
+        auxiliar.escreverBits(quadroPayload, i, bit, 1);
+    }
+
+    return quadroPayload;
+  } // fim do metodo
 } // fim da classe

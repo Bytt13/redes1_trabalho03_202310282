@@ -22,9 +22,11 @@ public class CamadaEnlaceDadosReceptora {
   * @return void 
   * ********************************************************* */
   public CamadaEnlaceDadosReceptora(int[] quadro, CamadaFisicaTransmissora transmissor) {
+    FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
     this.transmissor = transmissor;
     int[] quadroOrdenado = CamadaDeEnlaceReceptoraControleDeFluxo(quadro);
-    int[] quadroControlado = CamadaDeEnlaceReceptoraControleDeErro(quadroOrdenado, transmissor);
+    int[] quadroOrganizado = auxiliar.organizarQuadro(quadroOrdenado);
+    int[] quadroControlado = CamadaDeEnlaceReceptoraControleDeErro(quadroOrganizado, transmissor);
     if (quadroControlado == null) {
       System.out.println("Subquadro descartado por erro de controle.");
       return; // Aborta o processamento deste subquadro
@@ -730,21 +732,21 @@ public class CamadaEnlaceDadosReceptora {
     auxiliar.escreverBits(ackQuadro, 0, ackBits, 8);
     int[] quadroAckEnquadrado = CamadaEnlaceDadosTransmissora.CamadaDeEnlaceTransmissoraEnquadramento(ackQuadro);
     int[] quadroAckControlado = CamadaEnlaceDadosTransmissora.CamadaDeEnlaceTransmissoraControleDeErro(quadroAckEnquadrado);
-    int[] quadroAckOrdenado = CamadaEnlaceDadosTransmissora.CamadaDeEnlaceTransmissoraControleDeFluxo(quadroAckControlado);
+    int[] quadroAckOrdenadoComFluxo = CamadaEnlaceDadosTransmissora.CamadaDeEnlaceTransmissoraControleDeFluxo(quadroAckControlado);
     int tipoDeCodificacao = auxiliar.numberCodification(controller.getCodificacao()); // codificacao escolhida
     int[] fluxoBrutoDeBits; // Fluxo de bits depois de serem codificados
     switch (tipoDeCodificacao) {
       case 0:
-        fluxoBrutoDeBits = CamadaFisicaTransmissora.CamadaFisicaTransmissoraCodificacaoBinaria(quadroAckOrdenado); // Codificacao binaria
+        fluxoBrutoDeBits = CamadaFisicaTransmissora.CamadaFisicaTransmissoraCodificacaoBinaria(quadroAckOrdenadoComFluxo); // Codificacao binaria
         break;
       case 1:
-        fluxoBrutoDeBits = CamadaFisicaTransmissora.CamadaFisicaTransmissoraCodificacaoManchester(quadroAckOrdenado); // codificacao manchester
+        fluxoBrutoDeBits = CamadaFisicaTransmissora.CamadaFisicaTransmissoraCodificacaoManchester(quadroAckOrdenadoComFluxo); // codificacao manchester
         break;
       case 2:
-        fluxoBrutoDeBits = CamadaFisicaTransmissora.CamadaFisicaTransmissoraCodificacaoManchesterDiferencial(quadroAckOrdenado); //codificacao manchester diferencial
+        fluxoBrutoDeBits = CamadaFisicaTransmissora.CamadaFisicaTransmissoraCodificacaoManchesterDiferencial(quadroAckOrdenadoComFluxo); //codificacao manchester diferencial
         break;
       default:
-        fluxoBrutoDeBits = CamadaFisicaTransmissora.CamadaFisicaTransmissoraCodificacaoBinaria(quadroAckOrdenado); //Binario por padrao
+        fluxoBrutoDeBits = CamadaFisicaTransmissora.CamadaFisicaTransmissoraCodificacaoBinaria(quadroAckOrdenadoComFluxo); //Binario por padrao
         break;
     } // Fim do switch
     // switch para codificar corretamente os bits

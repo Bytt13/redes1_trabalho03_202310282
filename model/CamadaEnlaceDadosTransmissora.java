@@ -21,6 +21,7 @@ public class CamadaEnlaceDadosTransmissora {
   * ********************************************************* */
   public CamadaEnlaceDadosTransmissora(int []quadro) {
     TelaPrincipalController controller = TelaPrincipalController.getController();
+    FuncoesAuxiliares auxiliar = new FuncoesAuxiliares();
 
     // 1. Conta quantos subquadros ativos serao processados
     int subquadrosAtivos = 0;
@@ -36,6 +37,7 @@ public class CamadaEnlaceDadosTransmissora {
     for(int i = 0; i < quadro.length; i++) {
       if(quadro[i] == 0) continue;
       final int[] subquadroPayload = new int[] { quadro[i] };
+      final int numSeq = i;
 
       StringBuilder threadName = new StringBuilder("Thread-Subquadro-");
       threadName.append(i);
@@ -43,8 +45,9 @@ public class CamadaEnlaceDadosTransmissora {
       Thread threadSubquadro = new Thread(() -> {
       int[] subQuadroEnquadrado = CamadaDeEnlaceTransmissoraEnquadramento(subquadroPayload);
       int[] subQuadroControlado = CamadaDeEnlaceTransmissoraControleDeErro(subQuadroEnquadrado);
-      int[] subQuadroOrdenado = CamadaDeEnlaceTransmissoraControleDeFluxo(subQuadroControlado);
-      new CamadaFisicaTransmissora(subQuadroOrdenado);
+      int[] subQuadroOrdenado = auxiliar.ordenarQuadro(subQuadroControlado, numSeq);
+      int[] subQuadroControladoOrdenado = CamadaDeEnlaceTransmissoraControleDeFluxo(subQuadroOrdenado);
+      new CamadaFisicaTransmissora(subQuadroControladoOrdenado);
       }, threadName.toString());
 
       threadSubquadro.start();
